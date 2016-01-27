@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/!svn/ver/512/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy
+END
+LSMABCStrategy.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/!svn/ver/662/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/LSMABCStrategy.java
+END
+SimpleMultiTrendMABCStrategy.java
+K 25
+svn:wc:ra_dav:version-url
+V 125
+/svn/!svn/ver/512/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/SimpleMultiTrendMABCStrategy.java
+END
+TrendMABCStrategy_old.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svn/!svn/ver/639/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/TrendMABCStrategy_old.java
+END
+ValueMABCStrategy.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/668/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/ValueMABCStrategy.java
+END
+LSMABCStrategy_Excel.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/!svn/ver/636/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/LSMABCStrategy_Excel.java
+END
+TrendMABCStrategy.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/663/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/TrendMABCStrategy.java
+END
+TradingStrategy.java
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svn/!svn/ver/638/trunk/agentsimulator/src/info/financialecology/finance/abm/model/strategy/TradingStrategy.java
+END

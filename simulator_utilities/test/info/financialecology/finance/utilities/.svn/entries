@@ -1,0 +1,37 @@
+10
+
+dir
+540
+https://systemic-risk.googlecode.com/svn/trunk/simulator_utilities/test/info/financialecology/finance/utilities
+https://systemic-risk.googlecode.com/svn
+
+
+
+2014-05-14T14:01:44.034491Z
+481
+gilbert.peffer@gmail.com
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+9037037c-4999-e0c9-8e52-9ec6bb453ff3
+
+datagen
+dir
+
+datastruct
+dir
+
+output
+dir
+

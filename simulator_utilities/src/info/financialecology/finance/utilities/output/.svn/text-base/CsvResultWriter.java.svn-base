@@ -1,0 +1,466 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Barbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.utilities.output;
+
+import info.financialecology.finance.utilities.Assertion;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeries;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeriesList;
+import info.financialecology.finance.utilities.datastruct.VersatileDataTable;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeries;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeriesCollection;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import cern.colt.list.DoubleArrayList;
+import cern.colt.list.IntArrayList;
+import au.com.bytecode.opencsv.CSVWriter;
+
+/**
+ * Write the results stored in objects of different types to a file in CSV (comma-separated values) 
+ * format. Data can be read from objects of the following types:
+ * <ul>
+ * <li> {@link DoubleArrayList}
+ * <li> {@link DoubleTimeSeries}
+ * <li> {@link DoubleTimeSeriesList}
+ * <li> {@link VersatileDataTable}
+ * </ul>  
+ * 
+ * @author Gilbert Peffer
+ *
+ */
+public class CsvResultWriter implements ResultWriter {
+    private static final String     TICK_HEADER = "tick";
+    private static final char       SEPARATOR   = ',';
+    private CSVWriter w;
+    
+    public enum Format {ROW, COL}
+
+    public CsvResultWriter(String fileName) {
+        try {
+            w = new CSVWriter(new FileWriter(fileName), SEPARATOR);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+    
+    public CsvResultWriter(String fileName, char separator) {
+        try {
+            w = new CSVWriter(new FileWriter(fileName), separator);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+    
+    public void write(Object result) {      // TODO add overloaded method that takes a ResultEnum (see Datastore for method signature)
+        write(result, null);
+    }
+
+    
+    /**
+     * Write the values stored in objects of different type to the file {@code fileName}. See the
+     * methods {@link #writeDoubleArrayList}, {@link #writeDoubleTimeSeries}, {@link #writeDoubleTimeSeriesList},
+     * and {@link #writeVersatileDataTable} for details.
+     * 
+     * @param result the object that contains the results
+     * @param params optional parameters. See the type-specific write methods for details. 
+     */
+    @Override
+    public void write(Object result, Object[] params) {      // TODO add overloaded method that takes a ResultEnum (see Datastore for method signature)
+        Class<? extends Object> c = result.getClass();
+        
+        // Write the values from a DoubleArrayList object - VECTOR
+        if (c.equals(IntArrayList.class)) {
+            
+            if (params == null)    // no parameters provided
+                writeIntArrayList((IntArrayList) result, "");
+            else if (params.length == 1) // the header label is provided
+                writeIntArrayList((IntArrayList) result, (String) params[0]);
+            else
+                Assertion.assertOrKill(false, "Check the parameters of the write(...) method for IntArrayList. " +
+                        "Allowable signatures are: write(IntArrayList) and write(IntArrayList, String)");
+        }
+        // Write the values from a DoubleArrayList object - VECTOR
+        else if (c.equals(DoubleArrayList.class)) {
+            
+            if (params == null)    // no parameters provided
+                writeDoubleArrayList((DoubleArrayList) result, "");
+            else if (params.length == 1) // the header label is provided
+                writeDoubleArrayList((DoubleArrayList) result, (String) params[0]);
+            else
+                Assertion.assertOrKill(false, "Check the parameters of the write(...) method for DoubleArrayList. " +
+                        "Allowable signatures are: write(DoubleArrayList) and write(DoubleArrayList, String)");
+        }
+        // Write the values from a DoubleTimeSeries object - 2 VECTORS (tick, value)
+        else if (c.equals(DoubleTimeSeries.class)) {
+        
+            if (params == null) // no parameters provided
+                writeDoubleTimeSeries((DoubleTimeSeries) result, TICK_HEADER, ((DoubleTimeSeries) result).getId());
+            else if (params.length == 2) // the tick and header labels are provided
+                writeDoubleTimeSeries((DoubleTimeSeries) result, (String) params[0], (String) params[1]);
+            else
+                Assertion.assertOrKill(false, "Check the parameters of the write(...) method for DoubleTimeSeries. " +
+                        "Allowable signatures are: write(DoubleTimeSeries) and write(DoubleTimeSeries, String, String)");
+        }
+        // Write the values from a DoubleTimeSeriesList object
+        else if (c.equals(DoubleTimeSeriesList.class)) {
+
+            if (params == null) // no parameters provided
+                writeDoubleTimeSeriesList((DoubleTimeSeriesList) result, TICK_HEADER, "");
+            else if (params.length == 2) // the tick label and a generic header-prefix label is provided
+                writeDoubleTimeSeriesList((DoubleTimeSeriesList) result, (String) params[0], (String) params[1]);
+            else
+                Assertion.assertOrKill(false, "Check the parameters of the write(...) method for DoubleTimeSeriesList. " +
+                        "Allowable signatures are: write(DoubleTimeSeriesList) and write(DoubleTimeSeriesList, String, String)");
+        }
+        // Write the values from a VersatileTimeSeriesCollection
+        else if (c.equals(VersatileTimeSeriesCollection.class)) {
+            writeVersatileTimeSeriesCollection((VersatileTimeSeriesCollection) result);
+        }
+        // Write the values from a VersatileDataTable object
+        else if (c.equals(VersatileDataTable.class)) {
+
+            if (params == null) // no parameters provided
+                writeVersatileDataTable((VersatileDataTable) result, true, true);
+            else if (params.length == 2) // the tick and header labels are provided
+                writeVersatileDataTable((VersatileDataTable) result, (Boolean) params[0], (Boolean) params[1]);
+            else
+                Assertion.assertOrKill(false, "Check the parameters of the write(...) method for VersatileDataTable. " +
+                        "Allowable signatures are: write(VersatileDataTable) and write(VersatileDataTable, Boolean, Boolean)");
+        }
+        else
+            Assertion.assertOrKill(false, "The write(...) method is not defined for the class '" + c.getSimpleName() + "'");    // this should throw an exception rather than use an assert
+    }
+        
+
+    /**
+     * Writes a {@code IntArrayList} object in CSV format. The values are written in a column,
+     * with the  label {@code name}, if provided.
+     *  
+     * @param values a vector of values that are to be written to the file
+     * @param name a name for the values
+     */
+    private void writeIntArrayList(IntArrayList values, String name) {
+
+        ArrayList<String> colName = new ArrayList<String>(); 
+        ArrayList<ArrayList<String>> table = new ArrayList<ArrayList<String>>();
+        
+        table.add(new ArrayList<String>());    // a string array to store the values
+
+        if (!name.isEmpty())    // only add the name for the values if it is not an empty string
+            colName.add(name);
+                
+        for (int i = 0; i < values.size(); i++) // add the values to the table (contains only one column)
+            table.get(0).add(Integer.toString(values.get(i)));
+        
+        writeCSVTable(null, colName, table);                
+    }
+
+    
+    /**
+     * Writes a {@code DoubleArrayList} object in CSV format. The values are written in a column,
+     * with the  label {@code name}, if provided.
+     *  
+     * @param values a vector of values that are to be written to the file.
+     * @param name a name for the values
+     */
+    private void writeDoubleArrayList(DoubleArrayList values, String name) {
+
+        ArrayList<String> colName = new ArrayList<String>(); 
+        ArrayList<ArrayList<String>> table = new ArrayList<ArrayList<String>>();
+        
+        table.add(new ArrayList<String>());    // a string array to store the values
+
+        if (!name.isEmpty())    // only add the name for the values if it is not an empty string
+            colName.add(name);
+                
+        for (int i = 0; i < values.size(); i++) // add the values to the table (contains only one column)
+            table.get(0).add(Double.toString(values.get(i)));
+        
+        writeCSVTable(null, colName, table);                
+    }
+
+    
+    /**
+     * Writes a {@code DoubleTimeSeries} object in CSV format. The values are written in column
+     * format, with the header label {@code valueHeader}. If both the {@code tickHeader} and the 
+     * {@code valueHeader} are empty strings, then no header will be written to the file. 
+     *  
+     * @param values a time series of ticks and values that are to be written to the file.
+     * @param tickHeader a label for the tick. Overwrites TICK_HEADER
+     * @param valueHeader a label for the values
+     */
+    private void writeDoubleTimeSeries(DoubleTimeSeries values, String tickHeader, String valueHeader) {
+
+        ArrayList<String> colNames = new ArrayList<String>(); 
+        ArrayList<ArrayList<String>> table = new ArrayList<ArrayList<String>>();
+        
+        table.add(new ArrayList<String>());    // column storing the ticks
+        table.add(new ArrayList<String>());    // column storing the values
+
+        if (!tickHeader.isEmpty() || !valueHeader.isEmpty()) {   // if either tickHeader and valueHeader is provided, add a header to the file
+            colNames.add(tickHeader);
+            colNames.add(valueHeader);
+        }
+                
+        for (int i = 0; i < values.size(); i++) {    
+            table.get(0).add(Integer.toString(values.getTick(i)));
+            table.get(1).add(Double.toString(values.getValue(i)));
+        }
+        
+        writeCSVTable(null, colNames, table);        
+    }
+    
+        
+    /**
+     * Writes a set of {@code DoubleTimeSeries} stored in a {@code DoubleTimeSeriesList} object 
+     * in CSV format. If both the {@code tickHeader} and the {@code valueHeaderPrefix} are empty 
+     * strings, then no header will be written to the file. 
+     * 
+     * @param timeSeriesList a list of time series, the ticks and values that are to be written to the file.
+     * @param tickHeader a label for the tick. Overwrites TICK_HEADER
+     * @param valueHeaderPrefix a prefix for the labels values when written in column format. If
+     * {@code valueHeaderPrefix = ""}, then the time series identifiers returned by 
+     * {@link DoubleTimeSeries#getId()} are used. Otherwise, identifiers are constructed using the 
+     * {@code valueHeaderPrefix} and the row number.
+     */
+    private void writeDoubleTimeSeriesList(DoubleTimeSeriesList timeSeriesList, String tickHeader, 
+                                           String valueHeaderPrefix) {
+
+        ArrayList<ArrayList<String>> values = new ArrayList<ArrayList<String>>();
+        ArrayList<String> colNames = new ArrayList<String>();
+        
+        values.add(new ArrayList<String>());    // column storing the ticks of the time series (TODO ensure the tick sequence is identical for all time series)
+        
+        // TODO validate time series: they all need to have the same ticks
+        
+        // If either tickHeader or valueHeaderPrefix is given, add a header to the file
+        if (!tickHeader.isEmpty() || !valueHeaderPrefix.isEmpty()) {
+            
+            colNames.add(tickHeader);
+            int index = 0;
+            
+            for (DoubleTimeSeries dts : timeSeriesList) {
+                
+                // Column name = either 'time series id' or 'prefix_index'
+                if (valueHeaderPrefix.isEmpty())
+                    colNames.add(dts.getId());
+                else
+                    colNames.add(valueHeaderPrefix + "_" + index);
+                
+                index++;
+            }
+        }
+        
+        // Create an array for the ticks of the time series - relies on all time series having identical tick sequences
+        for (int i = 0; i < timeSeriesList.get(0).size(); i++)
+            values.get(0).add(Integer.toString(timeSeriesList.get(0).getTick(i)));
+        
+        // Create separate arrays for the values of each time series
+        int index = 0;
+        
+        for (DoubleTimeSeries dts : timeSeriesList) {
+            
+            values.add(new ArrayList<String>());    // column storing the values of time series dts
+            
+            for (int i = 0; i < dts.size(); i++)
+                values.get(index + 1).add(Double.toString(dts.getValue(i)));
+            
+            index++;
+        }
+                        
+        writeCSVTable(null, colNames, values);        
+    }
+    
+        
+    /**
+     * Write the data table {@link VersatileDataTable} {@code table} to the file in CSV format.
+     * <p>
+     * The columns in the table for instance can contain the values of particular variables, while 
+     * the rows are the various observations of these variables.
+     * @param atsc the time series collection
+     */
+    private void writeVersatileDataTable(VersatileDataTable table, Boolean writeRowNames, Boolean writeColNames) {
+        
+        List<String> rowKeys = table.getRowKeys();      // the row names provided with the table
+        List<String> colKeys = table.getColumnKeys();   // the column names provided with the table
+
+        ArrayList<ArrayList<String>> values = new ArrayList<ArrayList<String>>();
+        ArrayList<String> colNames = new ArrayList<String>();
+        ArrayList<String> rowNames = new ArrayList<String>();
+
+        // TODO validation
+                
+        // If writeColNames is true, generate the header
+        if (writeColNames) {
+            
+            if (writeRowNames) colNames.add("");   // an empty column name if row names are written out
+
+            for (String colKey : colKeys)
+                colNames.add(colKey);
+        }
+        
+        // If writeRowNames is true, generate the row names array
+        if (writeRowNames) {
+            
+            for (String rowKey : rowKeys)
+                rowNames.add(rowKey);
+        }
+
+        // Store the values of each variable in a separate array 
+        for (String colKey : colKeys) {
+            
+            int count = 0;
+            values.add(new ArrayList<String>());    // column storing the variable
+
+            for (String rowKey : rowKeys) {
+            
+                Double value = table.getValue(rowKey, colKey).doubleValue();
+                values.get(count).add(Double.toString(value));
+                
+            }
+            
+            count++;
+        }
+            
+        writeCSVTable(rowNames, colNames, values);        
+    }
+
+    
+    /**
+     * Write the time series data from a set of {@link VersatileTimeSeries} stored in the 
+     * {@link VersatileTimeSeriesCollection} {@code atsc} to the file in CSV format.
+     * <p>
+     * The first row in the CSV file contains the time series identifiers, except for the first 
+     * column, which got a tick/time/date label. The subsequent rows contain the tick/time/date as the 
+     * first item and are followed by the values of the time series variables for that tick/time/date.
+     *  
+     * @param atsc the time series collection
+     */
+    private void writeVersatileTimeSeriesCollection(VersatileTimeSeriesCollection vtsc) {
+
+        Assertion.assertOrKill((vtsc != null) && (vtsc.getSeriesCount() > 0), "The VersatileTimeSeriesCollection cannot be empty");
+        
+        int numTimeSeries   = vtsc.getSeriesCount();            // number of time series in the collection
+        int numTicks        = vtsc.getItemCount(0);             // the number of data points in the time series (assumes consistency)
+        
+        ArrayList<String> colNames = new ArrayList<String>();   // the column names for the CSV file
+        ArrayList<ArrayList<String>> values = new ArrayList<ArrayList<String>>();
+
+        // Create empty arrays for the column data
+        for (int i = 0; i < numTimeSeries + 1; i++)
+            values.add(new ArrayList<String>());
+        
+        String tickLabel = vtsc.getSeries(0).getInternalParams().getTimePeriodFormat();
+        
+        // Check consistency of tick labels and add tick values to the first column of the CSV table
+        for (int i = 0; i < vtsc.getSeriesCount(); i++) {
+            
+            Assertion.assertOrKill(vtsc.getSeries(i).getInternalParams().getTimePeriodFormat().compareTo(tickLabel) == 0, 
+                    "Tick labels in time series have to be identical");            
+        }
+        
+        VersatileTimeSeries vts = vtsc.getSeries(0);
+        
+        // Add label of the tick column
+        if (vts.getInternalParams().getTimePeriodFormat().equals("tick"))
+            colNames.add("Tick");
+        else if (vts.getInternalParams().getTimePeriodFormat().equals("actual"))
+            colNames.add(vtsc.getSeries(0).getTimePeriodClass().getSimpleName());
+        
+        // Add values of the tick column
+        for (int row = 0; row < numTicks; row++)
+            values.get(0).add(vtsc.getSeries(0).getTimePeriod(row).toString());
+            
+        
+        for (int col = 1; col < numTimeSeries + 1; col++) {
+            
+            vts = vtsc.getSeries(col - 1);
+            ArrayList<String> colValues = values.get(col);
+            
+            // Add label of column 'col'
+            colNames.add((String) vts.getKey());
+            
+            // Add values of column 'col'
+            for (int row = 0; row < numTicks; row++)
+                colValues.add(vts.getValue(row).toString());
+        }
+
+        writeCSVTable(null, colNames, values);        
+    }
+
+    
+    /**
+     * Writes a table of values and optional row and column names. The row and column names
+     * are provided as array lists of strings and the values as an array list of array lists 
+     * of strings, representing the different variables. The variables are written in column 
+     * form into the file, together with their optional row and column names.
+     * 
+     *  @author Gilbert Peffer
+     */
+    private void writeCSVTable(ArrayList<String> rowNames, ArrayList<String> colNames, ArrayList<ArrayList<String>> values) {
+        
+        int indRowNames = 0;    // indicator for whether we need an additional column to store the row names
+        
+        int numRows = values.get(0).size();        
+        int numCols = values.size();
+                
+        if ((rowNames != null) && (!rowNames.isEmpty())) {  // row names are provided
+            
+            indRowNames = 1;
+            
+            Assertion.assertOrKill(rowNames.size() == numRows, "Number of row names (" + rowNames.size() +
+                    ") does not coincide with the number of rows (" + numRows + ") in the values table"); 
+        }
+
+        String[] csvItems = new String[numCols + indRowNames];  // String array holding the tokens that the will be written into a single line in the file
+
+        if ((colNames != null) && (!colNames.isEmpty())) {  // column names are provided
+            
+            Assertion.assertOrKill(colNames.size() == numCols, "Number of col names (" + colNames.size() +
+                    ") does not coincide with the number of cols (" + numCols + ") in the values table"); 
+            
+            if (indRowNames == 1) csvItems[0] = "";     // an empty column name for the row name column, if provided
+            
+            for (int c = 0; c < numCols; c++)    // write the column names, if provided
+                csvItems[c + indRowNames] = colNames.get(c);
+            
+            w.writeNext(csvItems);
+        }
+
+        for (int r = 0; r < numRows; r++) {
+            
+            if (indRowNames == 1)     // write the name for row r if row names are provided
+                csvItems[0] = rowNames.get(r);
+            
+            for (int c = 0; c < numCols; c++)    // write value (r,c)
+                csvItems[c + indRowNames] = values.get(c).get(r);
+            
+            w.writeNext(csvItems);
+        }
+                
+        try {
+            w.flush();  // TODO the file stream needs to be closed properly, but where?
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }    
+}

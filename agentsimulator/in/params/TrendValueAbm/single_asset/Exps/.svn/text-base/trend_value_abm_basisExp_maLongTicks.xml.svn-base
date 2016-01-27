@@ -1,0 +1,26 @@
+<info.financialecology.finance.abm.sandbox.TrendValueAbmParams>
+  <nTicks>2000</nTicks>
+  <nRuns>25</nRuns>
+  <seed>700</seed>
+  
+<numTrends>200</numTrends>  <numFunds>200</numFunds>  <!-- Parameters of price generator -->  <shift_price>100</shift_price>
+  <amplitude_price>0</amplitude_price>
+  <lag_price>0</lag_price>
+  <lambda_price>200</lambda_price>
+  
+  <mu_price>0</mu_price>  <sigma_price>0.4</sigma_price>
+  <price_0>100</price_0>  <liquidity>400</liquidity>  <!-- Parameters of fundamental value generator -->  <shift_value>100</shift_value>
+  <amplitude_value>0</amplitude_value>
+  <lag_value>0</lag_value>
+  <lambda_value>200</lambda_value>
+  
+  <mu_value>0</mu_value>  <sigma_value>0.25</sigma_value>
+  <!-- Parameters of TREND traders -->  <maShortTicksMin>5</maShortTicksMin>
+  <maShortTicksMax>15</maShortTicksMax>
+  <maLongTicksMin>16</maLongTicksMin>
+  <maLongTicksMax>30</maLongTicksMax>  <bcTicksTrendMin>5</bcTicksTrendMin>
+  <bcTicksTrendMax>30</bcTicksTrendMax>
+  <capFactorTrend>1</capFactorTrend>
+  <volWindow>25</volWindow>
+  <!-- Parameters of FUND traders -->  <entryThresholdMin>5</entryThresholdMin>  <entryThresholdMax>10</entryThresholdMax>  <exitThresholdMin>-0.2</exitThresholdMin>  <exitThresholdMax>2</exitThresholdMax>  <valueOffset>8</valueOffset>   <bcTicksFundMin>1</bcTicksFundMin>
+  <bcTicksFundMax>1</bcTicksFundMax>  <capFactorFund>1</capFactorFund>  </info.financialecology.finance.abm.sandbox.TrendValueAbmParams>

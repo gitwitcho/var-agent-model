@@ -1,0 +1,17 @@
+<info.financialecology.finance.abm.sandbox.TrendAbmParams>
+  <nTicks>500</nTicks>
+  <nRuns>1</nRuns>
+  <seed>124</seed>
+  
+<numTrends>3</numTrends>  <shift>100</shift>
+  <amplitude>20</amplitude>
+  <lag>0</lag>
+  <lambda>100</lambda>
+  <mu>0</mu>
+  <sigma>0.001</sigma>
+  <price_0>100</price_0>  <volWindow>100</volWindow>  <liquidity>10</liquidity>  <maShortTicks>10</maShortTicks>
+  <maLongTicks>40</maLongTicks>
+  <bcTicks>10</bcTicks>
+  <capFactor>100</capFactor>
+  <volWindowTrend>25</volWindowTrend>
+   </info.financialecology.finance.abm.sandbox.TrendAbmParams>

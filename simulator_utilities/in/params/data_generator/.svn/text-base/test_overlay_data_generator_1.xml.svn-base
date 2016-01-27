@@ -1,0 +1,14 @@
+<info.financialecology.finance.utilities.test.TestOverlayDataGeneratorParams>
+  
+<nTicks>500</nTicks>
+ <!-- Parameters of deterministic generator --> 
+<!-- 1: shift,  2: sin amplitude / step height,  3: sin lag / step width,  4: sin lambda / valley width -->
+<distParam_1>0</distParam_1>
+  <distParam_2>50</distParam_2>
+  <distParam_3>50</distParam_3>
+  <distParam_4>100</distParam_4>
+ <!-- Parameters of random generator --> 
+<!-- 5: U lower bound / N mean,  6: U upper bound / N std dev -->
+<distParam_5>-4</distParam_5>
+ <distParam_6>2</distParam_6>
+</info.financialecology.finance.utilities.test.TestOverlayDataGeneratorParams>

@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime
+END
+commons-logging-1.0.4.jar
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime/commons-logging-1.0.4.jar
+END
+log4j-1.2.13.jar
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime/log4j-1.2.13.jar
+END
+javassist-3.7.0.GA.jar
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime/javassist-3.7.0.GA.jar
+END
+saf.core.runtime.jar
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime/saf.core.runtime.jar
+END
+commons-cli-1.0.jar
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/66/trunk/agentsimulator/lib/runtime/commons-cli-1.0.jar
+END

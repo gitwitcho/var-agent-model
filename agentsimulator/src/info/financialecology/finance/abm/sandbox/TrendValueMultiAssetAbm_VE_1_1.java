@@ -1,0 +1,386 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Bàrbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.abm.sandbox;
+
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import info.financialecology.finance.abm.model.TrendValueAbmSimulator;
+import info.financialecology.finance.abm.model.agent.Trader;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.MultiplierTrend;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.PositionUpdateTrend;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.OrderOrPositionStrategyTrend;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.ShortSellingTrend;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.VariabilityCapFactorTrend;
+import info.financialecology.finance.abm.model.strategy.ValueMABCStrategy;
+import info.financialecology.finance.abm.model.strategy.ValueMABCStrategy.PositionUpdateValue;
+import info.financialecology.finance.abm.model.strategy.ValueMABCStrategy.OrderOrPositionStrategyValue;
+import info.financialecology.finance.abm.model.strategy.ValueMABCStrategy.VariabilityCapFactorValue;
+import info.financialecology.finance.abm.model.strategy.ValueMABCStrategy.ShortSellingValue;
+import info.financialecology.finance.abm.sandbox.TrendValueAbmParams;
+import info.financialecology.finance.utilities.Assertion;
+import info.financialecology.finance.utilities.CmdLineProcessor;
+import info.financialecology.finance.utilities.datagen.OverlayDataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomDistDataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomGeneratorPool;
+import info.financialecology.finance.utilities.datagen.OverlayDataGenerator.GeneratorType;
+import info.financialecology.finance.utilities.datagen.RandomGeneratorPool.DistributionType;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeries;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeriesList;
+import info.financialecology.finance.utilities.datastruct.VersatileChart;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeries;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeriesCollection;
+import info.financialecology.finance.utilities.output.ResultWriterFactory;
+import info.financialecology.finance.utilities.statistics.StatsTimeSeries;
+import cern.colt.Timer;
+import cern.colt.list.DoubleArrayList;
+import ch.qos.logback.classic.Logger;
+
+import org.slf4j.LoggerFactory;
+
+/**
+ * Verification VE 1.1 of TrendValueMultiAssetAbmSimulation
+ * 
+ * Run this code with 1, 2, and 3 shares respectively. The results for the first and second share shouldn't
+ * change since it always creates the random generators for asset 1 first, then for asset 2, and so on.
+ * 
+ * TODO We need to implement a feature in the random generator pool that allows us to specify the seed index
+ * and hence to have control of all generators created at the simulation level. Also, any class that creates
+ * a random generator and that is not a simulation class should allow control over the seed.
+ * 
+ * @author Gilbert Peffer, Bàrbara Llacay
+ */
+public class TrendValueMultiAssetAbm_VE_1_1 {
+
+    protected static final String TEST_ID = "TrendValueMultiAssetAbm_VE_1_1"; 
+    
+    /**
+     * @param args
+     * @throws FileNotFoundException 
+     */
+    public static void main(String[] args) throws FileNotFoundException {
+        Timer timerAll  = new Timer();  // a timer to calculate total execution time (cern.colt)
+        Timer timer     = new Timer();  // a timer to calculate execution times of particular methods (cern.colt)
+        timerAll.start();
+
+        /*
+         * Enable logging. Root level settings affect logger behavior in all methods.
+         * 
+         * To enable verbose output (via logger.trace(...)), use the command line option -v.
+         *  
+         */
+        Logger root = (Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(ch.qos.logback.classic.Level.TRACE);
+        Logger logger = (Logger)LoggerFactory.getLogger("main");
+        
+        System.out.println("\nTEST: " + TEST_ID);
+        System.out.println("===================================\n");
+
+        logger.trace("Setting up test for class '{}'\n", TEST_ID);
+        
+        /** *********************************************************
+         * 
+         *      SET-UP
+         *      
+         *      - Read parameter file
+         *      - Assign parameter values
+         *
+         ********************************************************** */
+        logger.trace("Reading parameters from file");
+        
+
+        /*
+         * Read parameters from file
+         * 
+         * To write a new parameter file template, uncomment the following two lines
+         *      TrendAbmParams.writeParamDefinition("param_template.xml");
+         *      System.exit(0);
+         * 
+         */
+        
+        TrendValueAbmParams params = TrendValueAbmParams.readParameters(CmdLineProcessor.process(args));
+
+        /*
+         *      PARAMETERS
+         */
+
+        int numTicks        = params.nTicks;        // number of ticks per simulation run
+        int numRuns         = params.nRuns;         // number of runs per simulation experiment
+        int startSeed       = params.seed;          // starting position in the random seed table; -1 for random value (based on internal clock) 
+        
+        int numTrends       = params.numTrends;     // number of TREND investors
+        int numFunds        = params.numFunds;      // number of FUND investors
+        
+        int numAssets       = 3;    // number of assets - set this to either 1, 2, or 3
+        
+        ArrayList<String> shareIds = new ArrayList<String>();
+        
+        shareIds.add("IBM");
+        
+        if (numAssets > 1) shareIds.add("MSFT");
+        if (numAssets > 2) shareIds.add("GOOG");
+        
+        DoubleArrayList price_0      = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.PRICE_0);
+        DoubleArrayList liquidity    = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.LIQUIDITY);
+
+        //  Parameters for the exogenous price process. The process is an overlay of a Brownian process and a sinus function
+        
+        DoubleArrayList amplitude_price  = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.AMPLITUDE_PRICE);
+        DoubleArrayList lag_price        = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.LAG_PRICE);
+        DoubleArrayList lambda_price     = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.LAMBDA_PRICE);
+        
+        DoubleArrayList mu_price         = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.MU_PRICE);
+        DoubleArrayList sigma_price      = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.SIGMA_PRICE);
+                
+        // Parameters for the exogenous market-wide fundamental value process. The process is an overlay of a Brownian process and a sinus function
+        
+        DoubleArrayList amplitude_value  = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.AMPLITUDE_VALUE);
+        DoubleArrayList lag_value        = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.LAG_VALUE);
+        DoubleArrayList lambda_value     = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.LAMBDA_VALUE);        
+        
+        DoubleArrayList mu_value         = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.MU_VALUE);
+        DoubleArrayList sigma_value      = params.getValidatedDoubleSequence(TrendValueAbmParams.Sequence.SIGMA_VALUE);
+        
+        // TODO Change the [min, max] values for thresholds and other parameters to INTERVAL form 
+        
+        // Set number of assets and validate the remaining parameter array lengths 
+        // TODO Create a separate parameter file with numAssets as one of the parameters, and validate directly there
+        
+        // '>=' allows us to use the same parameter file for smaller number of assets than parameters provided
+        boolean control = ((liquidity.size() >= numAssets) && 
+                (amplitude_price.size() >= numAssets) && (amplitude_value.size() >= numAssets) &&
+                (lag_price.size() >= numAssets) && (lag_value.size() >= numAssets) &&
+                (lambda_price.size() >= numAssets) && (lambda_value.size() >= numAssets) &&
+                (mu_price.size() >= numAssets) && (mu_value.size() >= numAssets) &&
+                (sigma_price.size() >= numAssets) && (sigma_value.size() >= numAssets));
+        
+        Assertion.assertOrKill(control == true, "Wrong number of parameters for " + numAssets + " assets");
+
+        
+        /*
+         *      OUTPUT VARIABLES
+         */
+        
+        // Variables for charts
+        
+        VersatileChart charts = new VersatileChart();
+        charts.getInternalParms().autoRange = true;
+        charts.getInternalParms().autoRangePadding = 0;
+        charts.getInternalParms().ticks = true;
+        
+        // Time series
+        
+        VersatileTimeSeriesCollection atcPrices          = new VersatileTimeSeriesCollection("Prices for shares");
+        VersatileTimeSeriesCollection atcValues          = new VersatileTimeSeriesCollection("Fundamental Values");
+        
+        
+        /** ************************************************************
+         * 
+         *      SIMULATION EXPERIMENTS
+         *           
+         *************************************************************** */
+        
+        
+	        for (int run = 0; run < numRuns; run++) {
+	        	
+	        	System.out.print("RUN:" + run + "\n");
+	                        
+	            /*
+	             * Setting up the simulator
+	             */
+                
+                Assertion.assertOrKill(shareIds.size() == numAssets, numAssets + " share identifiers have to be defined, but only " + shareIds + " are in the list");
+	        	
+                TrendValueAbmSimulator simulator = new TrendValueAbmSimulator();      // recreating the simulator will also get rid of the old schedule
+                
+                for (int i = 0; i < numAssets; i++) {
+                    simulator.addShares(shareIds.get(i));
+                    simulator.getMarketMaker().setInitPrice(shareIds.get(i), price_0.get(i));    // TODO Move the share identifiers to the parameter file
+                    simulator.getMarket().setInitLogReturn(shareIds.get(i), 0);
+                    simulator.getMarket().setInitValue(shareIds.get(i), price_0.get(i));
+                    simulator.getMarket().setLiquidity(shareIds.get(i), liquidity.get(i));
+                } 
+                                
+                for (int i = 1; i < numAssets; i++) {
+                	simulator.addSpreads(shareIds.get(0) + "_" + shareIds.get(i));
+                    simulator.getMarketMaker().setInitSpread(shareIds.get(0), price_0.get(0), shareIds.get(i), price_0.get(i)); 
+                }
+	            simulator.createTrendFollowers(numTrends);
+	            simulator.createValueInvestors(numFunds);
+	            
+	            
+	            /*
+	             * Setting up the data generators
+	             */
+	            
+	            if (startSeed < 0)
+	                RandomGeneratorPool.configureGeneratorPool();
+	            else
+	                RandomGeneratorPool.configureGeneratorPool(startSeed + run);
+	            
+                HashMap<String, Trader> trendFollowers = simulator.getTrendFollowers();
+                HashMap<String, Trader> valueTraders = simulator.getValueInvestors();
+                
+                // Trend followers - Random generators for parameters of long and short MA, and exit channel window sizes
+                // Separate generators for the different assets, to allow replication of individual asset prices when number of assets changes
+                HashMap<String, RandomDistDataGenerator> maShortTicks = new HashMap<String, RandomDistDataGenerator>();
+                HashMap<String, RandomDistDataGenerator> maLongTicks = new HashMap<String, RandomDistDataGenerator>();
+                HashMap<String, RandomDistDataGenerator> bcTicksTrend = new HashMap<String, RandomDistDataGenerator>();
+	                            
+                // Value investors - Random generators for parameters of long and short MA, and exit channel window sizes
+                // Separate generators for the different assets, to allow replication of individual asset prices when number of assets changes
+                HashMap<String, RandomDistDataGenerator> entryThreshold = new HashMap<String, RandomDistDataGenerator>();
+                HashMap<String, RandomDistDataGenerator> exitThreshold = new HashMap<String, RandomDistDataGenerator>();
+                HashMap<String, RandomDistDataGenerator> valueOffset = new HashMap<String, RandomDistDataGenerator>();
+                HashMap<String, RandomDistDataGenerator> bcTicksFund = new HashMap<String, RandomDistDataGenerator>();
+	
+                // Create all random generators for asset 1 first, then for asset 2, and so on  
+	            for (int i = 0; i < numAssets; i++) {
+	                
+	                String secId = shareIds.get(i);
+	            
+	                // Exogenous prices and values
+    	            OverlayDataGenerator prices = new OverlayDataGenerator(
+    	                    "Price_" + shareIds.get(i), GeneratorType.SINUS, GeneratorType.ARITHMETIC_BROWNIAN_PROCESS, 
+    	                    price_0.get(i), amplitude_price.get(i), lag_price.get(i), lambda_price.get(i), mu_price.get(i), sigma_price.get(i));
+    	
+    	            OverlayDataGenerator fundValues = new OverlayDataGenerator(
+    	                    "FundValue_" + shareIds.get(i), GeneratorType.SINUS, GeneratorType.ARITHMETIC_BROWNIAN_PROCESS, 
+    	                    price_0.get(i), amplitude_value.get(i), lag_value.get(i), lambda_value.get(i), mu_value.get(i), sigma_value.get(i));
+    	
+                    simulator.setExogeneousPriceProcess(shareIds.get(i), prices);
+                    simulator.setFundamentalValueProcess(shareIds.get(i), fundValues);
+
+                    // Trend followers
+                    RandomDistDataGenerator distMaShortTicks = new RandomDistDataGenerator("MA_Short_" + secId, DistributionType.UNIFORM, (double) params.maShortTicksMin, (double) params.maShortTicksMax);                    
+                    RandomDistDataGenerator distMaLongTicks     = new RandomDistDataGenerator("MA_Long_" + secId, DistributionType.UNIFORM, (double) params.maLongTicksMin, (double) params.maLongTicksMax);
+                    RandomDistDataGenerator distBcTicksTrend    = new RandomDistDataGenerator("BC_Ticks_Trend_" + secId, DistributionType.UNIFORM, (double) params.bcTicksTrendMin, (double) params.bcTicksTrendMax);
+
+                    maShortTicks.put(secId, distMaShortTicks);
+                    maLongTicks.put(secId, distMaLongTicks);
+                    bcTicksTrend.put(secId, distBcTicksTrend);
+
+                    // Value investors
+                    RandomDistDataGenerator distEntryThreshold = new RandomDistDataGenerator("Entry_" + secId, DistributionType.UNIFORM, params.entryThresholdMin, params.entryThresholdMax);
+                    RandomDistDataGenerator distExitThreshold = new RandomDistDataGenerator("Exit_" + secId, DistributionType.UNIFORM, params.exitThresholdMin, params.exitThresholdMax);
+                    RandomDistDataGenerator distValueOffset = new RandomDistDataGenerator("Offset_" + secId, DistributionType.UNIFORM, -params.valueOffset, params.valueOffset);
+                    RandomDistDataGenerator distBcTicksFund = new RandomDistDataGenerator("BC_Ticks_Fund_" + secId, DistributionType.UNIFORM, (double) params.bcTicksFundMin, (double) params.bcTicksFundMax);
+
+                    entryThreshold.put(secId, distEntryThreshold);
+                    exitThreshold.put(secId, distExitThreshold);
+                    valueOffset.put(secId, distValueOffset);
+                    bcTicksFund.put(secId, distBcTicksFund);
+	            }
+	            
+	            // Trend followers - Additional parameters - these are identical for all assets
+	            MultiplierTrend trendMultiplier = MultiplierTrend.MA_SLOPE_DIFFERENCE_STDDEV;        // Method to calculate the size of the trend positions
+	            PositionUpdateTrend positionUpdateTrend = PositionUpdateTrend.VARIABLE;    // Specifies if a position can be modified while open
+	            OrderOrPositionStrategyTrend orderOrPositionStrategyTrend = OrderOrPositionStrategyTrend.POSITION;     // Specifies if the strategy is order-based or position-based
+	            VariabilityCapFactorTrend variabilityCapFactorTrend = VariabilityCapFactorTrend.CONSTANT;              // Specifies if the capFactor is constant or varies based on the agent performance
+	            ShortSellingTrend shortSellingTrend = ShortSellingTrend.ALLOWED;       // Specifies if short-selling is allowed
+	            	            
+	            for (int i = 0; i < trendFollowers.size(); i++) {
+	                
+	                for (String secId : shareIds) {
+	                    
+    	            	simulator.addTrendStrategyForOneTrendFollower(secId, "Trend_" + i, (int) Math.round(maShortTicks.get(secId).nextDouble()), 
+    	            			(int) Math.round(maLongTicks.get(secId).nextDouble()), (int) Math.round(bcTicksTrend.get(secId).nextDouble()), params.capFactorTrend, 
+    	            			params.volWindowTrend, trendMultiplier, positionUpdateTrend, orderOrPositionStrategyTrend, 
+    	            			variabilityCapFactorTrend, shortSellingTrend);
+	                }
+	            }
+	    
+                // Value investors - Additional parameters - these are identical for all assets
+	            PositionUpdateValue positionUpdateValue = PositionUpdateValue.VARIABLE;     // Specifies if a position can be modified while open
+	            OrderOrPositionStrategyValue orderOrPositionStrategyValue = OrderOrPositionStrategyValue.POSITION;     // Specifies if the strategy is order-based or position-based
+	            VariabilityCapFactorValue variabilityCapFactorValue = VariabilityCapFactorValue.CONSTANT;              // Specifies if the capFactor is constant or varies based on the agent performance
+	            ShortSellingValue shortSellingValue = ShortSellingValue.ALLOWED;       // Specifies if short-selling is allowed
+	            
+	            for (int i = 0; i < valueTraders.size(); i++) {
+	                
+	                for (String secId : shareIds) {
+	            
+    	            	simulator.addValueStrategyForOneValueInvestor(secId, "Value_" + i, entryThreshold.get(secId).nextDouble(), exitThreshold.get(secId).nextDouble(), 
+    	            	        valueOffset.get(secId).nextDouble(), (int) Math.round(bcTicksFund.get(secId).nextDouble()), params.capFactorFund, positionUpdateValue, 
+    	            	        orderOrPositionStrategyValue, variabilityCapFactorValue, shortSellingValue);
+    	            }
+	            }            
+	
+	            
+	            /* ***************************************
+	             * 
+	             *      Run the simulation
+	             *  
+	             ****************************************/
+	            simulator.setNumTicks(numTicks);
+	            simulator.run();
+	            
+	            
+	            /* ***************************************
+	             * 
+	             *      Print result and create graphs
+	             *      
+	             ****************************************/
+	            
+	            for (String secId : shareIds) {
+    	            logger.debug("{}", VersatileTimeSeries.printDecoratedTicks(simulator.getPrices(secId), 0));
+    	            logger.debug("{}", VersatileTimeSeries.printDecoratedValues(simulator.getPrices(secId), "Price", 6));
+    	            
+    	            logger.debug("{}", VersatileTimeSeries.printDecoratedTicks(simulator.getFundValues(secId), 0));
+    	            logger.debug("{}", VersatileTimeSeries.printDecoratedValues(simulator.getFundValues(secId), "Value", 6));
+    	            
+                    atcPrices.populateSeries(run, secId + "_P", simulator.getPrices(secId));
+    	            atcValues.populateSeries(run, secId + "_V", simulator.getFundValues(secId));
+    	            
+    	            /**
+    	             * Print the volatility of log-returns for calibration purposes 
+    	             */            
+    	            DoubleTimeSeries tsLogReturns = new DoubleTimeSeries();
+    	            
+    	            for (int k = 1; k < numTicks; k++) {
+    	            	double price_current_tick = simulator.getPrices(secId).get(k);
+    	            	double price_previous_tick = simulator.getPrices(secId).get(k-1);
+    	            	tsLogReturns.add(Math.log(price_current_tick) - Math.log(price_previous_tick));
+    	            }
+    	            
+    	            logger.debug("VOLATILITY of LOG-RETURNS: {}", tsLogReturns.stdev());
+    	            logger.debug("KURTOSIS of LOG-RETURNS: {}", tsLogReturns.excessKurtosis());
+    	            logger.debug("SKEWNESS of LOG-RETURNS: {}", tsLogReturns.skewness());
+    	            logger.debug("MEAN VOLUME - F: {}, T: {}", simulator.getFundVolume(secId).mean(), simulator.getTrendVolume(secId).mean());
+    	            logger.debug("AVG WEALTH INCREMENT - F: {}, T: {}", simulator.getFundAvgWealthIncrement(secId).get(numTicks-1), simulator.getTrendAvgWealthIncrement(secId).get(numTicks-1));
+	            }  
+	        }
+
+
+        /****************************************************
+         * 
+         *               OUTPUT
+         *      
+         *****************************************************/ 
+                
+        /**
+         * Charts
+         */        
+        
+        charts.draw(atcPrices);
+        charts.draw(atcValues);
+        
+        logger.debug("----- END OF SIMULATION EXPERIMENT -----\n");
+        
+    }
+}

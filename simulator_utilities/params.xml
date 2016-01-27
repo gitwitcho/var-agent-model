@@ -1,0 +1,15 @@
+<info.financialecology.finance.utilities.test.TestParamsSetup>
+  <isInitialised>false</isInitialised>
+  <numberInteger>4</numberInteger>
+  <numberDouble>-54.643</numberDouble>
+  <integerInterval>[5, 9]</integerInterval>
+  <doubleInterval>[-2.5, 34.2736]</doubleInterval>
+  <integerSequence>c(5, 10, -3, 6, 1)</integerSequence>
+  <doubleSequence>c(1.354, 9.3527, -324.4563)</doubleSequence>
+  <integerIntervalSequence>[3, 6], [-12, -4], [0, 9]</integerIntervalSequence>
+  <doubleIntervalSequence>[-0.34, 2.43], [323.34, 5432.342]</doubleIntervalSequence>
+  <iteratorTwo>c(1:4)</iteratorTwo>
+  <iteratorThree>c(1:2:4)</iteratorThree>
+  <repeatNumber>rep(9, 3)</repeatNumber>
+  <repeatInterval>rep([1,4],2)</repeatInterval>
+</info.financialecology.finance.utilities.test.TestParamsSetup>

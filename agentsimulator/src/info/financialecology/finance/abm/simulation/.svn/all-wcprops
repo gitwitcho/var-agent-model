@@ -1,0 +1,83 @@
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/448/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation
+END
+FJEqnSimpleParamsRandomiser.java
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnSimpleParamsRandomiser.java
+END
+FJAbmSimulation.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/!svn/ver/448/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJAbmSimulation.java
+END
+LPMHBEqnParamsRandomiser.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPMHBEqnParamsRandomiser.java
+END
+LPLSEqnSimulation.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPLSEqnSimulation.java
+END
+FJEqnParamsRandomiser.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnParamsRandomiser.java
+END
+LPLSEqnParams.java
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPLSEqnParams.java
+END
+FJEqnSimpleSimulation.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/448/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnSimpleSimulation.java
+END
+LPLSEqnParamsRandomiser.java
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPLSEqnParamsRandomiser.java
+END
+FJEqnSimpleParams.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnSimpleParams.java
+END
+LPMHBEqnSimulation.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/!svn/ver/448/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPMHBEqnSimulation.java
+END
+FJEqnSimulation.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/!svn/ver/448/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnSimulation.java
+END
+LPMHBEqnParams.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/LPMHBEqnParams.java
+END
+FJEqnParams.java
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/simulation/FJEqnParams.java
+END

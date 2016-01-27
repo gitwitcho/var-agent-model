@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/68/trunk/agentsimulator/lib/logback-0.9.29
+END
+logback-core-0.9.29.jar
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/68/trunk/agentsimulator/lib/logback-0.9.29/logback-core-0.9.29.jar
+END
+logback-classic-0.9.29.jar
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/!svn/ver/68/trunk/agentsimulator/lib/logback-0.9.29/logback-classic-0.9.29.jar
+END

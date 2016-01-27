@@ -1,0 +1,61 @@
+<info.financialecology.finance.abm.sandbox.TrendValueAbmParams>
+    <nTicks>2000</nTicks>
+    <nRuns>1</nRuns>
+    <seed>700</seed>
+    <numTrends>200</numTrends>
+    <numFunds>200</numFunds>
+ <numLS>200</numLS><!-- Parameters of price generator -->
+    <shift_price>c(0, 0, 0)</shift_price>
+    <amplitude_price>c(0, 0, 0)</amplitude_price>
+    <lag_price>c(0, 0, 0)</lag_price>
+    <lambda_price>c(200, 200, 200)</lambda_price>
+    <mu_price>c(0, 0, 0)</mu_price>
+    <sigma_price>c(0.4, 0.4, 0.4)</sigma_price>
+    <price_0>c(100, 100, 100)</price_0>
+    <liquidity>c(400, 400, 400)</liquidity>
+<!-- Parameters of fundamental value generator -->
+    <shift_value>c(0, 0, 0)</shift_value>
+    <amplitude_value>c(0, 0, 0)</amplitude_value>
+    <lag_value>c(0, 0, 0)</lag_value>
+    <lambda_value>c(200, 200, 200)</lambda_value>  
+    <mu_value>c(0, 0, 0)</mu_value>
+    <sigma_value>c(0.25, 0.25, 0.25)</sigma_value>
+<!-- Parameters of TREND traders -->
+    <maShortTicksMin>5</maShortTicksMin>
+    <maShortTicksMax>15</maShortTicksMax>
+    <maLongTicksMin>35</maLongTicksMin>
+    <maLongTicksMax>50</maLongTicksMax>
+    <bcTicksTrendMin>5</bcTicksTrendMin>
+    <bcTicksTrendMax>30</bcTicksTrendMax>
+    <capFactorTrend>1</capFactorTrend>
+    <volWindowTrend>25</volWindowTrend>
+  <probShortSellingTrend>0</probShortSellingTrend>
+<!-- Parameters of FUND traders -->
+    <entryThresholdMin>2</entryThresholdMin>
+    <entryThresholdMax>5</entryThresholdMax>
+    <exitThresholdMin>-0.5</exitThresholdMin>
+    <exitThresholdMax>1</exitThresholdMax>
+    <valueOffset>8</valueOffset>
+    <bcTicksFundMin>1</bcTicksFundMin>
+    <bcTicksFundMax>1</bcTicksFundMax>
+    <capFactorFund>1</capFactorFund>
+ 
+<probShortSellingValue>0</probShortSellingValue>
+
+<!-- Parameters of LS traders -->
+    <maSpreadShortTicksMin>1</maSpreadShortTicksMin>
+    <maSpreadShortTicksMax>5</maSpreadShortTicksMax>     
+<maSpreadLongTicksMin>150</maSpreadLongTicksMin>
+    <maSpreadLongTicksMax>300</maSpreadLongTicksMax>   
+<volWindowLS>25</volWindowLS>
+    
+<entryDivergenceSigmasMin>2</entryDivergenceSigmasMin>
+  <entryDivergenceSigmasMax>2</entryDivergenceSigmasMax>
+  
+<exitConvergenceSigmasMin>0.5</exitConvergenceSigmasMin>
+  <exitConvergenceSigmasMax>0.5</exitConvergenceSigmasMax>  
+<exitStopLossSigmasMin>3</exitStopLossSigmasMin>
+  <exitStopLossSigmasMax>3</exitStopLossSigmasMax>
+  
+<capFactorLS>1</capFactorLS>
+</info.financialecology.finance.abm.sandbox.TrendValueAbmParams>

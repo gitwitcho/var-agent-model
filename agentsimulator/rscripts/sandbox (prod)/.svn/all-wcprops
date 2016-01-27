@@ -1,0 +1,77 @@
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/524/trunk/agentsimulator/rscripts/sandbox%20(prod)
+END
+trend_value_abm.R
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/!svn/ver/612/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_abm.R
+END
+trend_value_ls_abm_effect_of_LS.R
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/!svn/ver/629/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm_effect_of_LS.R
+END
+trend_value_ls_var_abm.R
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/686/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_var_abm.R
+END
+sandbox (prod).rproj
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/77/trunk/agentsimulator/rscripts/sandbox%20(prod)/sandbox%20(prod).rproj
+END
+trend_value_ls_abm_efficiency_AE2015.R
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/658/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm_efficiency_AE2015.R
+END
+basic-R.R
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/88/trunk/agentsimulator/rscripts/sandbox%20(prod)/basic-R.R
+END
+trend_value_ls_abm.R
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/679/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm.R
+END
+trend_value_abm_1asset_simplified.R
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/!svn/ver/555/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_abm_1asset_simplified.R
+END
+trend_value_ls_abm_multivariate_SF_2assets.R
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn/!svn/ver/679/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm_multivariate_SF_2assets.R
+END
+trend_value_ls_abm_multivariate_SF_3assets.R
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn/!svn/ver/679/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm_multivariate_SF_3assets.R
+END
+trend_value_abm_1asset_normfactor.R
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/!svn/ver/400/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_abm_1asset_normfactor.R
+END
+trend_value_ls_abm_multiasset_normfactor.R
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svn/!svn/ver/590/trunk/agentsimulator/rscripts/sandbox%20(prod)/trend_value_ls_abm_multiasset_normfactor.R
+END

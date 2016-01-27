@@ -1,0 +1,7 @@
+<info.financialecology.finance.utilities.test.TestSinusDataGeneratorParams>
+  <nTicks>1000</nTicks>
+  <mean>0.0</mean>
+  <amplitude>1.0</amplitude>
+  <shift>0.0</shift>
+  <lambda>100.0</lambda>
+</info.financialecology.finance.utilities.test.TestSinusDataGeneratorParams>

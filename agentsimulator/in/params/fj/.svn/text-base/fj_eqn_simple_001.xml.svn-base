@@ -1,0 +1,27 @@
+<com.cimne.finance.abm.simulation.FJEqnSimpleParams>
+  <nRuns>10</nRuns>
+  <nTicks>1000</nTicks>
+  <numValueInvestors>100</numValueInvestors>
+  <numTrendFollowers>100</numTrendFollowers>
+  <liquidity>1</liquidity>
+  <priceNoiseMu>0.0</priceNoiseMu>
+  <priceNoiseSigma>0.35</priceNoiseSigma>
+  <price__0>100.0</price__0>
+  <constCapFac>true</constCapFac>
+  <refValueMu>0.0</refValueMu>
+  <refValueSigma>0.35</refValueSigma>
+  <offsetValueMin>-2</offsetValueMin>
+  <offsetValueMax>2</offsetValueMax>
+  <TMinValueInv>0.2</TMinValueInv>
+  <TMaxValueInv>4</TMaxValueInv>
+  <tauMinValueInv>-0.2</tauMinValueInv>
+  <tauMaxValueInv>0</tauMaxValueInv>
+  <aValueInv>0.0025</aValueInv>
+  <TMinTrend>0.2</TMinTrend>
+  <TMaxTrend>4</TMaxTrend>
+  <tauMinTrend>-0.2</tauMinTrend>
+  <tauMaxTrend>0</tauMaxTrend>
+  <aTrend>0.0025</aTrend>
+  <delayMin>1</delayMin>
+  <delayMax>10</delayMax>
+</com.cimne.finance.abm.simulation.FJEqnSimpleParams>

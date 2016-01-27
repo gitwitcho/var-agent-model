@@ -1,0 +1,5 @@
+Test file for FileReaderFSM
+school
+holidays
+winter
+tires

@@ -1,0 +1,86 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Barbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.utilities.test;
+
+
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+
+import org.slf4j.LoggerFactory;
+
+import cern.colt.list.DoubleArrayList;
+import cern.colt.list.IntArrayList;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+
+
+/**
+ * Test of the class SimulationParameter.
+ * 
+ * Uses class TestParamsSetup that defines what parameters there are and the file ###.xml with the 
+ * actual values of the parameters. 
+ * 
+ *
+ * @author Gilbert Peffer
+ *
+ */
+public class TestParams {
+
+    protected static final String TEST_ID = "TestParams"; 
+
+    public static void main(String[] args) throws FileNotFoundException {
+
+        Logger root = (Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.ERROR); // TODO create a program argument to switch to trace
+        Logger logger = (Logger)LoggerFactory.getLogger("main");
+        
+
+        System.out.println("\n##########################");
+        System.out.println("#  TEST: " + TEST_ID);
+        System.out.println("##########################\n");
+
+        logger.trace("Setting up test for class '{}'\n", TEST_ID);
+        
+        String paramFileName = "./resources/test/test_params/params.xml";
+                
+        /**
+         * Read parameters from file
+         * 
+         * To write a new parameter file template, uncomment the following two lines
+         *      TestParamsSetup.writeParamDefinition("param_template.xml");
+         *      System.exit(0);
+         */
+
+        logger.trace("Reading parameters from file");
+
+        TestParamsSetup params = TestParamsSetup.readParameters(paramFileName);
+
+        IntArrayList integerInterval = params.getValidatedIntegerInterval(TestParamsSetup.Sequence.INTEGER_INTERVAL);
+        DoubleArrayList doubleInterval = params.getValidatedDoubleInterval(TestParamsSetup.Sequence.DOUBLE_INTERVAL);
+        
+        IntArrayList integerSequence = params.getValidatedIntegerSequence(TestParamsSetup.Sequence.INTEGER_SEQUENCE);
+        DoubleArrayList doubleSequence = params.getValidatedDoubleInterval(TestParamsSetup.Sequence.DOUBLE_INTERVAL);
+        
+        ArrayList<IntArrayList> integerIntervalSequence = params.getValidatedIntegerIntervalSequence(TestParamsSetup.Sequence.INTEGER_INTERVAL_SEQUENCE);
+        ArrayList<DoubleArrayList> doubleIntervalSequence = params.getValidatedDoubleIntervalSequence(TestParamsSetup.Sequence.DOUBLE_INTERVAL_SEQUENCE);
+        
+        DoubleArrayList iteratorTwo = params.getValidatedDoubleSequence(TestParamsSetup.Sequence.ITERATOR_TWO);
+        DoubleArrayList iteratorThree = params.getValidatedDoubleSequence(TestParamsSetup.Sequence.ITERATOR_THREE);
+        DoubleArrayList repeatNumber = params.getValidatedDoubleSequence(TestParamsSetup.Sequence.REPEAT_NUMBER);
+        ArrayList<DoubleArrayList> repeatInterval = params.getValidatedDoubleIntervalSequence(TestParamsSetup.Sequence.REPEAT_INTERVAL);
+    }
+    
+}

@@ -1,0 +1,43 @@
+<com.cimne.finance.abm.simulation.LPLSEquationParams>
+  <nRuns>1</nRuns>
+  <nTicks>10</nTicks>
+  <nAssets>3</nAssets>
+  <nMutualFunds>1</nMutualFunds>
+  <nHedgeFunds>1</nHedgeFunds>
+  <nBanks>1</nBanks>
+  <nAgents>9</nAgents>
+  <mfStrategies>c(1,1)</mfStrategies>
+  <baStrategies>[1,1]</baStrategies>
+  <constCapFac>true</constCapFac>
+  <liquidity>1.0</liquidity>
+  <price__0>rep(100.0, 3)</price__0>
+  <priceNoise>[0,0]</priceNoise>
+  <refValue>rep([0,0.35], 3)</refValue>
+  <cash>[1000,1000]</cash>
+  <offsetValue>rep([-2, 2], 3)</offsetValue>
+  <percentFund__B>[0.5,0.5]</percentFund__B>
+  <TFUND__MF>[0.2, 4]</TFUND__MF>
+  <tauFUND__MF>[0,0.2]</tauFUND__MF>
+  <aFUND__MF>0.0025</aFUND__MF>
+  <TTREND__MF>[0.2, 4]</TTREND__MF>
+  <tauTREND__MF>[0,0.2]</tauTREND__MF>
+  <delayTREND__MF>[1,10]</delayTREND__MF>
+  <aTREND__MF>0.0025</aTREND__MF>
+  <shortSelling__MF>false</shortSelling__MF>
+  <borrowing__MF>false</borrowing__MF>
+  <TLS__HF>[0.2, 4]</TLS__HF>
+  <tauLS__HF>[0,0.2]</tauLS__HF>
+  <aLS_HF>0.0025</aLS_HF>
+  <mawinLS__HF>[1,4]</mawinLS__HF>
+  <TFUND__B>[0.2, 4]</TFUND__B>
+  <tauFUND__B>[0,0.2]</tauFUND__B>
+  <aFUND__B>0.0025</aFUND__B>
+  <TTREND__B>[0.2, 4]</TTREND__B>
+  <tauTREND__B>[0,0.2]</tauTREND__B>
+  <delayTREND__B>[1,10]</delayTREND__B>
+  <aTREND__B>0.0025</aTREND__B>
+  <TLS__B>[0.2, 4]</TLS__B>
+  <tauLS__B>[0,0.2]</tauLS__B>
+  <aLS_B>0.0025</aLS_B>
+  <mawinLS__B>[1,4]</mawinLS__B>
+</com.cimne.finance.abm.simulation.LPLSEquationParams>

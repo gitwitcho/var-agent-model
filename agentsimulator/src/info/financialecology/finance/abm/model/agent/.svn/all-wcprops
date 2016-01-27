@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/!svn/ver/536/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent
+END
+FJFundamentalTrader.java
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svn/!svn/ver/431/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/FJFundamentalTrader.java
+END
+Trader.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/!svn/ver/689/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/Trader.java
+END
+ShareMarketMaker.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/!svn/ver/661/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/ShareMarketMaker.java
+END
+FJTechnicalTrader.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/!svn/ver/435/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/FJTechnicalTrader.java
+END
+Agent.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/431/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/Agent.java
+END
+FJMarketMaker.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svn/!svn/ver/621/trunk/agentsimulator/src/info/financialecology/finance/abm/model/agent/FJMarketMaker.java
+END

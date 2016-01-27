@@ -1,0 +1,6 @@
+<info.financialecology.finance.utilities.test.TestRandomDistDataGeneratorParams>
+  <nTicks>1000</nTicks>
+ <!-- 1: U lower bound / N mean,  2: U upper bound / N std dev --> 
+<distParam__1>c(0,10,-50, -20)</distParam__1>
+  <distParam__2>c(1,2,4,10)</distParam__2>
+  </info.financialecology.finance.utilities.test.TestRandomDistDataGeneratorParams>

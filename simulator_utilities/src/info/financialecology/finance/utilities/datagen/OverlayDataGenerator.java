@@ -1,0 +1,298 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Barbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.utilities.datagen;
+
+import info.financialecology.finance.utilities.datagen.BrownianProcess;
+import info.financialecology.finance.utilities.datagen.BrownianProcess.Type;
+import info.financialecology.finance.utilities.datagen.DataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomDistDataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomGeneratorPool.DistributionType;
+import info.financialecology.finance.utilities.datagen.SinusDataGenerator;
+import info.financialecology.finance.utilities.datagen.SteppedDataGenerator;
+import info.financialecology.finance.utilities.Assertion;
+
+import java.util.ArrayList;
+
+import cern.colt.list.DoubleArrayList;
+
+
+/**
+ * This data generator creates one or several independent streams of numbers drawn from the sum of a 
+ * deterministic data generator (sinus or step function) and a random data generator (following a 
+ * uniform or normal distribution).
+ * 
+ * The first data point is always equal to the initial value(s) provided as a parameter in the constructor. 
+ * 
+ * The data generator can create both scalar and vector random values.
+ *  
+ * @author Barbara Llacay, Gilbert Peffer
+ *
+ */
+public class OverlayDataGenerator implements DataGenerator {
+	
+	private ArrayList<DataGenerator> detList = new ArrayList<DataGenerator>();
+	private ArrayList<DataGenerator> distList = new ArrayList<DataGenerator>();
+    private ArrayList<GeneratorType> detTypes = new ArrayList<GeneratorType>();
+    private ArrayList<GeneratorType> distTypes = new ArrayList<GeneratorType>();
+	
+	private DoubleArrayList params = new DoubleArrayList();	
+    private DoubleArrayList initialValues = new DoubleArrayList(); // initial values need to substracted from Brownian processes
+    private DoubleArrayList lastValues = new DoubleArrayList();    // stores the last values of the process, to compute the first difference
+	
+	private boolean firstValue = true;     // false if the generator has already returned data
+	private int numStreams;                // the number of data streams of this generator
+	
+    public enum GeneratorType {
+        STEP (2),
+        SINUS (2),
+        UNIFORM (2),
+        NORMAL (2),
+        ARITHMETIC_BROWNIAN_PROCESS (3),
+        GEOMETRIC_BROWNIAN_PROCESS (3);
+        
+        private final int mNumParams;
+        
+        GeneratorType(int numParams) {
+            this.mNumParams = numParams;
+        }
+        
+        public int getNumParams() { return mNumParams; }
+    }
+
+    /**
+     * Constructor for the overlay data generator.
+     * 
+     * @param baseName Registration name for the random number generator
+     * @param detType Type of the deterministic generator: Sinus or Stepped
+     * @param distType Type of the random generator: Uniform or Normal
+     * @param params List of parameters for the deterministic and random generators
+     */
+    public OverlayDataGenerator(String baseName, GeneratorType detType, GeneratorType distType, Double...paramList) {
+        super();
+        
+        Assertion.assertStrict(paramList.length % 6 == 0, Assertion.Level.ERR, "Number of parameters provided to the constructor " +
+        		"of the OverlayDataGenerator class is " + paramList.length + 
+        		", but it should be a multiple of 6 (1 for the initial value, 3 for the sinus or stepped function + 2 for the uniform or normal distribution");
+
+        for(Double item : paramList) {
+            params.add(item);
+        }
+                               
+        /**
+         * Setup of generators
+         */        
+        numStreams = (int) Math.floor(0.1 + params.size() / 6);    // number of dimensions - a fix to avoid inaccuracy of division
+        
+        for (int i = 0; i < numStreams; i++) {
+        	String name = baseName;
+        	
+            // Initial value
+        	int iParam_1 = i * 6;      // the mean of the sine or step generator is set to this value
+
+            // Sine generator
+            int iParam_2 = i * 6 + 1;   // amplitude
+            int iParam_3 = i * 6 + 2;   // (left-)shift
+            int iParam_4 = i * 6 + 3;   // lambda
+            
+            // Brownian process or uniform / normal distribution
+            int iParam_5 = i * 6 + 4;
+            int iParam_6 = i * 6 + 5;
+            
+            if (numStreams > 1) name += "_" + i;
+            
+            initialValues.add(params.get(iParam_1));
+            lastValues.add(params.get(iParam_1));   // the first 'last value' is equal to the initial value
+            
+            // Deterministic generator
+            if (detType == GeneratorType.SINUS) {
+            	SinusDataGenerator sinus = new SinusDataGenerator(params.get(iParam_1), params.get(iParam_2), params.get(iParam_3), params.get(iParam_4));            	
+            	detList.add(sinus);
+            	detTypes.add(GeneratorType.SINUS);
+            }
+            else if (detType == GeneratorType.STEP) {
+            	SteppedDataGenerator stepped = new SteppedDataGenerator(params.get(iParam_1), params.get(iParam_2), params.get(iParam_3), params.get(iParam_4));
+            	detList.add(stepped);
+                detTypes.add(GeneratorType.STEP);
+            }
+            else
+                Assertion.assertOrKill(false, "Deterministic generator '" + detType.toString() + "' does not exist");
+            
+            // Random generator
+            if (distType == GeneratorType.UNIFORM) {
+            	RandomDistDataGenerator uniform = new RandomDistDataGenerator(name, DistributionType.UNIFORM, params.get(iParam_5), params.get(iParam_6));
+            	distList.add(uniform);                        
+                distTypes.add(GeneratorType.UNIFORM);
+            }
+            else if (distType == GeneratorType.NORMAL) {
+                RandomDistDataGenerator normal = new RandomDistDataGenerator(name, DistributionType.NORMAL, params.get(iParam_5), params.get(iParam_6));
+                distList.add(normal);
+                distTypes.add(GeneratorType.NORMAL);
+            }
+            else if (distType == GeneratorType.ARITHMETIC_BROWNIAN_PROCESS) {   // TODO This is not really a distribution type. There should be a process type, though unclear where it should live
+                BrownianProcess brownian = new BrownianProcess(name, Type.ARITHMETIC, params.get(iParam_1), params.get(iParam_5), params.get(iParam_6));
+                distList.add(brownian);
+                distTypes.add(GeneratorType.ARITHMETIC_BROWNIAN_PROCESS);
+            }
+            else if (distType == GeneratorType.GEOMETRIC_BROWNIAN_PROCESS) {   // TODO This is not really a distribution type. There should be a process type, though unclear where it should live
+                BrownianProcess brownian = new BrownianProcess(name, Type.GEOMETRIC, params.get(iParam_1), params.get(iParam_5), params.get(iParam_6));
+                distList.add(brownian);
+                distTypes.add(GeneratorType.GEOMETRIC_BROWNIAN_PROCESS);
+            }
+            else
+                Assertion.assertOrKill(false, "Distribution or process '" + distType.toString() + "' does not exist");
+        }
+    }
+
+
+    /**
+     * Get the number of data streams of this generator
+     * 
+     * @return the number of data streams
+     */
+    public double numberOfDatastreams() {
+        return numStreams;
+    }
+
+
+    /**
+     * Get the next value from the data generator. The first value is always equal to the initial value passed
+     * as a parameter to the constructor of the generator. The value returned by the deterministic generator is
+     * used as a base value. If the random generator is UNIFORM or NORMAL, then we add those values to the base
+     * value. If the random generator is BROWNIAN, we add increments to the base value.
+     *
+     * @return the next value produced by the data generator
+     */
+    @Override
+    public double nextDouble() {
+        
+        Assertion.assertStrict(numStreams == 1, Assertion.Level.ERR, "Asked for a scalar value, but data generator creates vector values");
+        
+        double nextValue = detList.get(0).nextDouble();
+        
+        if (!firstValue)
+            if ((distTypes.get(0) == GeneratorType.UNIFORM) || (distTypes.get(0) == GeneratorType.NORMAL))
+                nextValue += distList.get(0).nextDouble();
+            else if ((distTypes.get(0) == GeneratorType.ARITHMETIC_BROWNIAN_PROCESS) || (distTypes.get(0) == GeneratorType.GEOMETRIC_BROWNIAN_PROCESS))
+                nextValue += distList.get(0).nextDouble() - initialValues.get(0);
+            else
+                Assertion.assertOrKill(false, "Unknown generator type '" + distTypes.get(0).toString());
+        else
+            firstValue = false;
+                
+        lastValues.set(0, nextValue);
+
+        return nextValue;      
+    }
+    
+    
+    /**
+     * Get the next increment in value from the data generator. At time t=i, this is calculated by 
+     * generating the next value at t=i+1 and then taking the difference.
+     *
+     * @return the next increment in the value produce by the data generator 
+     */
+    public double nextDoubleIncrement() {
+        
+        Assertion.assertStrict(numStreams == 1, Assertion.Level.ERR, "Asked for a scalar value, but data generator creates vector values");
+        
+        if (firstValue) nextDouble();   // create a first data point if no values have been generated yet; nextDouble() stores this in lastValues
+        
+        double lastValue = lastValues.get(0);        
+        double nextValue = this.nextDouble();   // note that lastValues is updated already in the method nextDouble()
+        double increment =  nextValue - lastValue;
+        
+        return increment;      
+    }
+    
+    /**
+     * Get the next value from the data generator. The first value is always equal to the initial value passed
+     * as a parameter to the constructor of the generator. The value returned by the deterministic generator is
+     * used as a base value. If the random generator is UNIFORM or NORMAL, then we add those values to the base
+     * value. If the random generator is BROWNIAN, we add increments to the base value.
+     *
+     * @return {@code DoubleArrayList} of values from the data generator
+     */
+    @Override
+    public DoubleArrayList nextDoubleVector() {
+        
+    	DoubleArrayList nextValues = new DoubleArrayList();
+    	
+    	// Get the base value(s) from the deterministic generator(s)
+        for (int i = 0; i < numStreams; i++)
+            nextValues.add(detList.get(i).nextDouble());
+        
+        double nextValue;
+        
+        // Add the UNIFORM / NORMAL value (s) or the increment of the BROWNIAN value(s) to the base value(s)
+        if (!firstValue && ((distTypes.get(0) == GeneratorType.UNIFORM) || (distTypes.get(0) == GeneratorType.NORMAL))) {
+            
+            for (int i = 0; i < numStreams; i++) {
+                nextValue = nextValues.get(i);
+                nextValue += distList.get(i).nextDouble();
+                lastValues.set(i, nextValue);
+                nextValues.set(i, nextValue);
+            }
+        }
+        else if (!firstValue && ((distTypes.get(0) == GeneratorType.ARITHMETIC_BROWNIAN_PROCESS) || (distTypes.get(0) == GeneratorType.GEOMETRIC_BROWNIAN_PROCESS))) {
+
+            for (int i = 0; i < numStreams; i++) {
+                nextValue = nextValues.get(i);
+                nextValue += distList.get(i).nextDouble() - initialValues.get(i);
+                lastValues.set(i, nextValue);
+                nextValues.set(i, nextValue);
+            }            
+        }
+            	
+        return nextValues;
+    }    
+    
+    /**
+     * Get the next increment(s) in value from the data generator.
+     *
+     * @return {@code DoubleArrayList} of values from the data generator
+     */
+    @Override
+    public DoubleArrayList nextDoubleVectorIncrements() {
+    	
+        if (firstValue) nextDoubleVector();   // create a first data vector if no values have been generated yet; nextDoubleVector() stores this in lastValues
+        
+    	DoubleArrayList increments = new DoubleArrayList();
+    	DoubleArrayList lastValue = new DoubleArrayList();
+
+    	for (int i = 0; i < numStreams; i++)   // store the last values before nextDoubleVector() overrides them with the new values
+            lastValue.add(lastValues.get(i));
+        
+        DoubleArrayList nextValues = this.nextDoubleVector();   // note that lastValues is updated already in the method nextDouble()
+    	
+    	for (int i = 0; i < numStreams; i++)
+            increments.add(nextValues.get(i) - lastValue.get(i));
+    	
+        return increments;        
+    }    
+    
+    /**
+     * @see info.financialecology.finance.utilities.datagen.DataGenerator#nextDoubles(int)
+     */
+    @Override
+    public DoubleArrayList nextDoubles(int numDoubles) {
+        DoubleArrayList dal = new DoubleArrayList();
+        
+        for (int i = 0; i < numDoubles; i++)
+            dal.add(nextDouble());
+        
+        return dal;
+    }
+}

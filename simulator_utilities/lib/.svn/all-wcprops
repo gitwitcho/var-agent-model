@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/408/trunk/simulator_utilities/lib
+END
+colt-1.2.0-no_hep.jar
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/291/trunk/simulator_utilities/lib/colt-1.2.0-no_hep.jar
+END
+logback-core-0.9.29.jar
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/295/trunk/simulator_utilities/lib/logback-core-0.9.29.jar
+END
+tungsten-fsm-GP20131205-build.jar
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/!svn/ver/305/trunk/simulator_utilities/lib/tungsten-fsm-GP20131205-build.jar
+END
+opencsv-2.3.jar
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/408/trunk/simulator_utilities/lib/opencsv-2.3.jar
+END
+jargs.jar
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/295/trunk/simulator_utilities/lib/jargs.jar
+END
+logback-classic-0.9.29.jar
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/295/trunk/simulator_utilities/lib/logback-classic-0.9.29.jar
+END
+tungsten-fsm.jar
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/305/trunk/simulator_utilities/lib/tungsten-fsm.jar
+END
+commons-lang3-3.1.jar
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/295/trunk/simulator_utilities/lib/commons-lang3-3.1.jar
+END
+repast.simphony.bin_and_src.jar
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/291/trunk/simulator_utilities/lib/repast.simphony.bin_and_src.jar
+END
+commons-math3-3.0.jar
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/291/trunk/simulator_utilities/lib/commons-math3-3.0.jar
+END

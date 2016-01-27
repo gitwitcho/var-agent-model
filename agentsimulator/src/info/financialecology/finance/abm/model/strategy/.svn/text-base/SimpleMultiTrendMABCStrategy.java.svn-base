@@ -1,0 +1,123 @@
+/**
+ * Simple financial systemic risk simulator for Java
+ * http://code.google.com/p/systemic-risk/
+ * 
+ * Copyright (c) 2011, 2012
+ * Gilbert Peffer, CIMNE
+ * gilbert.peffer@gmail.com
+ * All rights reserved
+ *
+ * This software is open-source under the BSD license; see 
+ * http://code.google.com/p/systemic-risk/wiki/SoftwareLicense
+ */
+package info.financialecology.finance.abm.model.strategy;
+
+import java.util.ArrayList;
+
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.Multiplier;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.OrderOrPositionStrategyTrend;
+import info.financialecology.finance.abm.model.strategy.TrendMABCStrategy.PositionUpdateTrend;
+import info.financialecology.finance.utilities.Assertion;
+import info.financialecology.finance.utilities.WorldClock;
+import info.financialecology.finance.utilities.Assertion.Level;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeries;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeriesList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+/**
+ * [...]
+ * 
+ * @author Gilbert Peffer
+ *
+ */
+
+public class SimpleMultiTrendMABCStrategy {
+
+    // Logging information and errors
+    private static Logger logger = LoggerFactory.getLogger(SimpleMultiTrendMABCStrategy.class);
+    
+    /**
+     *  Parameters
+     */
+    private ArrayList<TrendMABCStrategy> trendStrategies;    // the array of trend strategies, one for each asset traded
+    private DoubleTimeSeriesList tslPositions;          // time series array of positions - an output of SimpleMultiTrendMABC    
+    private double warmUpPeriod;                        // the warm-up period needed for this trading strategy, in ticks
+    private int normPeriod;                             // window of input data for normalising the orders of VALUE and TREND traders
+    private int previousTick = -1;                      // flag to ensure trade() is called at every tick
+    private boolean hasTraded = false;                  // flag to ensure trend strategies can only be added before the first trade 
+    
+    // Constructor
+    public SimpleMultiTrendMABCStrategy() {
+        this.trendStrategies = new ArrayList<TrendMABCStrategy>();
+        this.tslPositions = new DoubleTimeSeriesList();
+        this.warmUpPeriod = 0;
+    }
+    
+    // Add a new trend strategy to the mix
+    public void addTrendStrategy(String secId,
+                                 int maShortTicks, 
+                                 int maLongTicks, 
+                                 int bcTicks, 
+                                 double capFactor, 
+                                 DoubleTimeSeries tsPrice,
+                                 int volWindow,
+                                 Multiplier multiplier,
+                                 PositionUpdateTrend positionUpdate,
+                                 OrderOrPositionStrategyTrend orderOrPositionStrategy) {
+        Assertion.assertStrict(!hasTraded, Level.ERR, "No trend strategy can be added after the first trade is made");
+        
+//        TrendMABCStrategy trend = new TrendMABCStrategy(secId, maShortTicks, maLongTicks, bcTicks, capFactor, tsPrice, volWindow, multiplier, normPeriod);   // DEPRECATED - normPeriod is no longer used
+        TrendMABCStrategy trend = new TrendMABCStrategy(secId, maShortTicks, maLongTicks, bcTicks, capFactor, tsPrice, volWindow, multiplier, positionUpdate, orderOrPositionStrategy);
+        trendStrategies.add(trend);
+        tslPositions.add(new DoubleTimeSeries(secId));
+        warmUpPeriod = Math.max(warmUpPeriod, trend.getWarmUpPeriod());
+    }
+    
+    /**
+     * @return the warmUpPeriod
+     */
+    public double getWarmUpPeriod() {
+        return warmUpPeriod;
+    }
+    
+    /**
+     * @return the tsPos
+     */
+    public DoubleTimeSeriesList getTslPositions() {
+        return tslPositions;
+    }
+
+
+    /**
+     * Computing the trade at time t relies on values known up to time t-1.
+     * Hence at time 'tick', typically no values exist in the price and position
+     * arrays.
+     *    
+     * @param tick tick at which the next trade takes place
+     */
+    public void trade() {
+        if (!hasTraded) hasTraded = true;
+        
+        int tick = WorldClock.currentTick();
+        
+        if (tick == previousTick + 1)
+            previousTick = tick;
+        else    // TODO This is probably not necessary for this strategy, since the single trend strategies got a check built in. But just to be on the safe side...
+            Assertion.assertStrict(false, Level.ERR, "The method trade() in the class SimpleMultiTrendMABCStrategy has to be called at each tick");
+        
+        if (tick < warmUpPeriod + normPeriod) {
+            
+            for (DoubleTimeSeries p : tslPositions)
+                p.add(tick, 0.0);
+            
+            return;
+        }
+        
+        for (TrendMABCStrategy trend : trendStrategies)
+            trend.trade();
+    }
+    
+}

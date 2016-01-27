@@ -1,0 +1,1311 @@
+
+# http://code.google.com/p/systemic-risk/
+# 
+# Copyright (c) 2011, CIMNE and Gilbert Peffer.
+# All rights reserved
+#
+# This software is open-source under the BSD license; see 
+# http://code.google.com/p/systemic-risk/wiki/SoftwareLicense
+
+rm(list = ls())        # clear objects
+graphics.off()         # close graphics windows
+library(vrtest)        # calculation of variance ratio
+library(lawstat)       # calculation of runs test
+library(fractal)       # calculation of Hurst exponent
+library(grid)          # plotting ggplots in a grid
+library(reshape)       # plotting ggplots
+library(ggplot2)
+library(zoo)
+
+
+
+###################################################################
+#                                                                 #
+#               'PARAMETERS' & INITIAL INFORMATION                #
+#                                                                 #
+###################################################################
+
+nAssets = 3
+nExp = 6
+
+# Setting the path to the data folder
+
+# Set the root directory (add your path)
+root.dir <- "C:/Users/llacay/eclipse"
+
+# Build the home directory (shouldn't be necessary to change)
+home.dir <- paste(root.dir, "/agentsimulator/out/trend-value-ls-abm-simulation/", sep="")
+
+
+# Read data from csv files for each experiment
+
+tsprices <- read.table(paste(home.dir,"list_price_timeseries_E0.csv",sep=""),
+   header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+tsvalues <- read.table(paste(home.dir,"list_fundvalues_timeseries_E0.csv",sep=""),
+   header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+tsTRENDwealth <- read.table(paste(home.dir,"list_trendwealth_timeseries_E0.csv",sep=""),
+   header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+
+if (nExp > 1) {   # Read data for single experiments and merge them
+   for (e in seq(from=1, to=nExp-1)) {
+      tsprices_exp <- read.table(paste(home.dir, paste("list_price_timeseries_E",e,".csv", sep=""), sep=""),
+         header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+      tsprices <- merge(tsprices, tsprices_exp, by="tick")
+
+      tsvalues_exp <- read.table(paste(home.dir, paste("list_fundvalues_timeseries_E",e,".csv", sep=""), sep=""),
+         header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+      tsvalues <- merge(tsvalues, tsvalues_exp, by="tick")
+
+      tsTRENDwealth_exp <- read.table(paste(home.dir, paste("list_trendwealth_timeseries_E",e,".csv", sep=""), sep=""),
+         header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+      tsTRENDwealth <- merge(tsTRENDwealth, tsTRENDwealth_exp, by="tick")
+   }
+}
+
+
+# Parameters needed from the java files
+
+nRuns <- (dim(tsprices)[2] - 1)/(nAssets*nExp)
+nTicks <- dim(tsprices)[1]
+
+param_file = "trend_value_ls_3_assets_abm_001"  # Parameter file
+
+# Plots are distributed in a matrix. Choose here the dimensions of the matrix
+
+numRows <- 2  # Dimensions of matrix of plots
+numCols <- 3
+step <- as.integer((nRuns-1)/(numRows*numCols))*nAssets  # Selects which plots to draw if there are too many
+
+
+# Change titles of dataframe columns to more descriptive ones
+
+titles = "tick"
+
+for (e in seq(from=1, to=nExp)) {
+   for (r in seq(from=1, to=nRuns)) {
+      for (a in seq(from=1, to=nAssets)) {
+         titles <- append(titles, paste("E", e, "_R", r, "_A", a, sep=""))
+      }
+   }
+}
+
+colnames(tsprices) <- titles
+colnames(tsvalues) <- titles
+
+
+
+###################################################################
+#                                                                 #
+#                    [AUXILIARY CALCULATIONS]                     #
+#                                                                 #
+#          AVERAGE ACF's and time series (for each asset)         #
+#                   - averaged over all runs -                    #
+#                                                                 #
+###################################################################
+
+# ------ Calculate logarithmic prices (for returns) and values ------ #
+
+tslogprices <- log(tsprices)
+tslogprices[[1]] <- tsprices[[1]]  # The 'tick' column must not change
+
+tslogvalues <- log(tsvalues)
+tslogvalues[[1]] <- tsvalues[[1]]  # The 'tick' column must not change
+
+
+# ------ Calculate the mean value of ACF over all runs for each asset ------ #
+# Note: This is done at the beginning to avoid that auxiliary ACFs are plotted in the pdf
+
+aux_acf <- acf(diff(tslogprices[[2]]), main="IGNORE (Auxiliary calculation)")  # Calculate how many lags R uses in the ACF plot
+nlags <- length(aux_acf$acf)
+
+mean_ACF_returns <- array(0, dim=c(nlags, nAssets*nExp)) # Arrays to store mean ACF's at each lag over all runs (for each asset and experiment)
+mean_ACF_absreturns <- array(0, dim=c(nlags, nAssets*nExp)) 
+mean_ACF_squaredreturns <- array(0, dim=c(nlags, nAssets*nExp))
+
+asset_ACF_matrix <- array(0, dim=c(nlags, nRuns))  # Auxiliary array to store the ACF's for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate matrix with ACF of asset i for each run
+         aux_acf <- acf(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]), lag.max=nlags-1, main="IGNORE (Auxiliary calculation)") 
+         asset_ACF_matrix[,j+1] = aux_acf$acf   # Store the vector of correlations
+      }
+
+      for (r in seq(from=1, to=nlags)) {   # Select max/min autocorrelation at each lag over all runs
+         mean_ACF_returns[r,i+k*nAssets] = mean(asset_ACF_matrix[r,])
+      }
+   }
+}
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate matrix with ACF of asset i for each run
+         aux_acf <- acf(abs(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]])), lag.max=nlags-1, main="IGNORE (Auxiliary calculation)") 
+         asset_ACF_matrix[,j+1] = aux_acf$acf   # Store the vector of correlations
+      }
+
+      for (r in seq(from=1, to=nlags)) {   # Select max/min autocorrelation at each lag over all runs
+         mean_ACF_absreturns[r,i+k*nAssets] = mean(asset_ACF_matrix[r,])
+      }
+   }
+}
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate matrix with ACF of asset i for each run
+         aux_acf <- acf((diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]))^2, lag.max=nlags-1, main="IGNORE (Auxiliary calculation)") 
+         asset_ACF_matrix[,j+1] = aux_acf$acf   # Store the vector of correlations
+      }
+
+      for (r in seq(from=1, to=nlags)) {   # Select max/min autocorrelation at each lag over all runs
+         mean_ACF_squaredreturns[r,i+k*nAssets] = mean(asset_ACF_matrix[r,])
+      }
+   }
+}
+
+
+# ------ Calculate the sum of absolute ACF values over all runs for each asset ------ #
+# Note: This is done at the beginning to avoid that auxiliary ACFs are plotted in the pdf
+
+Mean_sum_abs_ACF_returns <- array(0, dim=c(nExp, nAssets))  # Arrays to store the mean, max and min of the sum of ACF's (in abs value) at each lag over all runs (for each asset and experiment)
+Min_sum_abs_ACF_returns <- array(0, dim=c(nExp, nAssets))
+Max_sum_abs_ACF_returns <- array(0, dim=c(nExp, nAssets))
+
+asset_sum_ACF_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the sum of abs ACF's for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with sum of abs ACF's of asset i for each run
+         aux_acf <- acf(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]), lag.max=nlags-1, main="IGNORE (Auxiliary calculation)")
+         asset_sum_ACF_vector[,j+1] = sum(abs(aux_acf$acf))
+      }
+      Max_sum_abs_ACF_returns[k+1,i] = max(asset_sum_ACF_vector)  # Select max/min of sum of abs ACF's over all runs
+      Min_sum_abs_ACF_returns[k+1,i] = min(asset_sum_ACF_vector)
+      Mean_sum_abs_ACF_returns[k+1,i] = mean(asset_sum_ACF_vector)
+   }
+}
+
+
+# ------ Calculate average time series ------ #
+
+tsprices_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+tslogprices_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+tsvalues_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+tslogvalues_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+tsTRENDwealth_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         tsprices_avg[,i+k*nAssets] <- tsprices_avg[,i+k*nAssets] + tsprices[[i+1+j*nAssets+k*nAssets*nRuns]]
+         tslogprices_avg[,i+k*nAssets] <- tslogprices_avg[,i+k*nAssets] + tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]
+         tsvalues_avg[,i+k*nAssets] <- tsvalues_avg[,i+k*nAssets] + tsvalues[[i+1+j*nAssets+k*nAssets*nRuns]]
+         tslogvalues_avg[,i+k*nAssets] <- tslogvalues_avg[,i+k*nAssets] + tslogvalues[[i+1+j*nAssets+k*nAssets*nRuns]]
+
+         tsTRENDwealth_avg[,i+k*nAssets] <- tsTRENDwealth_avg[,i+k*nAssets] + tsTRENDwealth[[i+1+j*nAssets+k*nAssets*nRuns]]
+      }
+
+      tsprices_avg[,i+k*nAssets] <- tsprices_avg[,i+k*nAssets]/nRuns
+      tslogprices_avg[,i+k*nAssets] <- tslogprices_avg[,i+k*nAssets]/nRuns
+      tsvalues_avg[,i+k*nAssets] <- tsvalues_avg[,i+k*nAssets]/nRuns
+      tslogvalues_avg[,i+k*nAssets] <- tslogvalues_avg[,i+k*nAssets]/nRuns
+      tsTRENDwealth_avg[,i+k*nAssets] <- tsTRENDwealth_avg[,i+k*nAssets]/nRuns
+   }
+}
+
+
+
+
+#######################################################################################################
+
+# Open files to write the results
+
+pdf(paste(home.dir, "Trend_Value_LS_ABM_efficiency.pdf", sep=""))   # Plot diagrams in a pdf file
+
+
+
+#_________________________________________________________________#
+#                                                                 # 
+#               EFFICIENCY: RETURN AUTOCORRELATION                #
+#_________________________________________________________________#
+#                                                                 #
+     
+#### ACF of log-returns for single runs 
+##
+## Objective: For each experiment, plot a selection of ACF for single runs
+#
+#for (e in seq(from=1, to=nExp)) {
+#   for (k in seq(from=1, to=nAssets)) {
+#      par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+#      if (nRuns>numRows*numCols){   
+#         for (i in seq(from=step, to=step*numRows*numCols, by=step)) {     
+#            acf(diff(tslogprices[[i+k+1 +(e-1)*nAssets*nRuns]]), main=paste("Run", 1+i/nAssets), ylim=c(-1,1))
+#         }
+#      } else {
+#         for (i in seq(from=1, to=nAssets*nRuns, by=nAssets)) {
+#            acf(diff(tslogprices[[i+k +(e-1)*nAssets*nRuns]]), main=paste("Run", 1+(i-1)/nAssets), ylim=c(-1,1))
+#         }
+#      }
+#      title(paste("Efficiency: ACF of log-returns - Asset", k, "( Exp", e, ")"), outer = TRUE, col.main="blue", font.main=2)
+#      mtext("Test description: ACF should decay quickly to zero (that is, it should lie between the dashed lines).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+#      mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+#   }
+#}
+
+### Average ACF of log-returns
+#
+# Objective: Plot a summary of the ACF along experiments
+
+upper_bound = rep(-1/nTicks+2/sqrt(nTicks), nrow(mean_ACF_returns))
+lower_bound = rep(-1/nTicks-2/sqrt(nTicks), nrow(mean_ACF_returns))
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot(mean_ACF_returns[,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(-1,1), xlab="Lag", ylab="Autocorrelations")
+      lines(upper_bound, lty=2, col="blue")
+      lines(lower_bound, lty=2, col="blue")      
+   }
+   title(paste("Efficiency: Average ACF of log-returns (over runs) - Asset", k), outer = TRUE, col.main="red", font.main=2)   
+   mtext("Test description: ACF should decay quickly to zero (that is, it should lie between the dashed lines).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+### Sum of the autocorrelations (in abs value) of log-returns (averaged over runs)
+#
+# Objective: Have an estimation of the size of the vector of autocorrelations, to check
+# if the autocorrelations get smaller (and so the market is more efficient) when there 
+# are more LS traders in the market 
+
+# Plot mean, minimum, and maximum sum of abs ACF of returns
+
+y_min = min(Min_sum_abs_ACF_returns)  # Range of y axis
+y_max = max(Max_sum_abs_ACF_returns)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_sum_abs_ACF_returns[,i], rev(Max_sum_abs_ACF_returns[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="", lwd=1, ylim=c(y_min,y_max))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_sum_abs_ACF_returns[,i], type="l", col="black", lwd=2)
+   lines(rep(0, nExp), lty=2, col="blue")   # Horizontal line at 0
+}
+title("Efficiency: Range of variation of sum of absolute ACF of log-returns", outer = TRUE, col.main="red", font.main=2)
+mtext("Test description: Overview of the mean/max/min values of the sum of ACFs of log returns, as a measure of market efficiency.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+### Alternative graphical representation: 'heat map' based on the 
+### Ljung-Box autocorrelation test
+#
+# Objective: The Ljung-Box test studies "whether any of a group of 
+# autocorrelations of a time series are different from zero. 
+# Instead of testing randomness at each distinct lag, it tests the 
+# "overall" randomness based on a number of lags, and is therefore 
+# a portmanteau test." [Wikipedia, http://en.wikipedia.org/wiki/Ljung-Box_test]
+
+# The following graphic summarises in how many runs it is accepted
+# that the autocorrelations are zero with a color code 
+# (green if the autocorrelations are null, red otherwise)
+
+for (a in seq(from=1, to=nAssets)) {
+   LBtest_matrix <- array(0, dim=c(nRuns, nExp))  # Array to store the results of the Ljung-Box test of each run
+
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)){
+         LBtest_matrix[j+1,k+1] = Box.test(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]), lag=1, type="Ljung")$p.value   # Store values of Hurst exponent
+      }
+   }
+
+   # Values of p value that define the different categories
+   intervals <- c(0, 0.05, 1)
+
+   # prepare label text (use two adjacent values for range text)
+   label_text <- rollapply(round(intervals, 2), width = 2, by = 1, FUN = function(i) paste(i, collapse = "-"))
+
+   # discretize matrix; this is the most important step, where for each value we find category of predefined ranges
+   mod_mat <- matrix(findInterval(LBtest_matrix, intervals, all.inside = TRUE), nrow = nrow(LBtest_matrix))
+
+   # output the graphics
+   df_LBtest <- melt(mod_mat)
+   colnames(df_LBtest) <- c("Run", "Experiment", "value")
+
+   # Obs: 'print' must be explicitly used when the ggplot is inside a loop
+   print(ggplot(df_LBtest, aes(x = Experiment, y = Run, fill = factor(value))) + geom_tile(color = "black") +
+	scale_fill_manual(values = c("1"="red3", "2"="palegreen3"), 
+	limits = c("1", "2"), name = paste("Ljung-Box test \n Asset", a), breaks=c(1,2), labels = label_text))
+}
+
+
+### Graphical representation: cdplot of runs where autocorrelations are null
+#
+# Objective: Complement the previous graphic using different lags, in
+# case the results change when a different number of lags is used
+
+for (i in seq(from=1, to=nAssets)) {
+
+   # Count in how many runs the absolute returns have long-term memory
+   test_rejected_lag1 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_lag5 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_lag10 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_lag20 <- array(0, dim=c(nExp, nRuns))
+
+   for (e in seq(from=1, to=nExp)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         LB_test_lag1  <- Box.test(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), lag=1, type="Ljung")   # Test for 1 lag
+         LB_test_lag5  <- Box.test(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), lag=5, type="Ljung")   # Test for 5 lags
+         LB_test_lag10 <- Box.test(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), lag=10, type="Ljung")   # Test for 10 lags
+         LB_test_lag20 <- Box.test(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), lag=20, type="Ljung")   # Test for 20 lags
+
+         if ( LB_test_lag1$p.value < 0.05 ) {
+            test_rejected_lag1[e,j+1] = 1
+         }
+
+         if ( LB_test_lag5$p.value < 0.05 ) {
+            test_rejected_lag5[e,j+1] = 1
+         }
+
+         if ( LB_test_lag10$p.value < 0.05 ) {
+            test_rejected_lag10[e,j+1] = 1
+         }
+
+         if ( LB_test_lag20$p.value < 0.05 ) {
+            test_rejected_lag20[e,j+1] = 1
+         }
+      }
+   }
+
+   # Convert numeric vectors to factors to draw cdplots
+   autocorrelations_lag1  <- factor(test_rejected_lag1, levels = 0:1, labels = c("yes", "no"))
+   autocorrelations_lag5  <- factor(test_rejected_lag5, levels = 0:1, labels = c("yes", "no"))
+   autocorrelations_lag10 <- factor(test_rejected_lag10, levels = 0:1, labels = c("yes", "no"))
+   autocorrelations_lag20 <- factor(test_rejected_lag20, levels = 0:1, labels = c("yes", "no"))
+
+   # Draw cdplots
+   par(mfrow=c(2,2), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+   x_axis <- rep(1:nExp,nRuns)
+
+   cdplot(autocorrelations_lag1~x_axis, xlab="Experiment", ylab="Null autocorrelations?", main="Ljung-Box - 1 lag", col = c("palegreen", "red3"))
+   cdplot(autocorrelations_lag5~x_axis, xlab="Experiment", ylab="Null autocorrelations?", main="Ljung-Box - 5 lags", col = c("palegreen", "red3"))
+   cdplot(autocorrelations_lag10~x_axis, xlab="Experiment", ylab="Null autocorrelations?", main="Ljung-Box - 10 lags", col = c("palegreen", "red3"))
+   cdplot(autocorrelations_lag20~x_axis, xlab="Experiment", ylab="Null autocorrelations?", main="Ljung-Box - 20 lags", col = c("palegreen", "red3"))
+   
+   title(paste("Efficiency: Are the first autocorrelations of log-returns null? (Ljung-Box test) - Asset ", i), outer = TRUE, col.main="blue", font.main=2)
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+
+#_________________________________________________________________________#
+#                                                                         # 
+#               EFFICIENCY: HURST EXPONENT OF LOG-RETURNS                 #
+#_________________________________________________________________________#
+#                                                                         #
+
+### Variation of the Hurst exponent of log-returns
+#
+# Calculate the min/max value of the Hurst exponent over all runs for each asset.
+# This exponent is an indicator of the long-term memory of the time series
+# Objective: Study the range of variation of the Hurst exponent over experiments
+
+Max_Hurst <- array(0, dim=c(nExp, nAssets))  # Arrays to store the max and min Hurst exponent over all runs (for each asset and experiment)
+Min_Hurst <- array(0, dim=c(nExp, nAssets))
+Mean_Hurst <- array(0, dim=c(nExp, nAssets))
+Stdev_Hurst <- array(0, dim=c(nExp, nAssets))
+
+asset_Hurst_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the Hurst exponent for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with Hurst exponent of asset i for each run
+         asset_Hurst_vector[,j+1] = hurstSpec(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]))   # Store values of Hurst exponent
+      }
+      Max_Hurst[k+1,i] = max(asset_Hurst_vector)  # Select max/min Hurst exponent over all runs
+      Min_Hurst[k+1,i] = min(asset_Hurst_vector)
+      Mean_Hurst[k+1,i] = mean(asset_Hurst_vector)
+      Stdev_Hurst[k+1,i] = sd(asset_Hurst_vector[1,])
+   }
+}
+
+# Plot mean, minimum, and maximum Hurst exponent
+
+y_min = min(Min_Hurst)  # Range of y axis
+y_max = max(Max_Hurst)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_Hurst[,i], rev(Max_Hurst[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="Max/Min Hurst exponent", lwd=1, ylim=c(0,1))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_Hurst[,i], type="l", col="black", lwd=2)
+   lines(Mean_Hurst[,i]+Stdev_Hurst[,i], type="l", col="red2")   # Plot +-1stdev to have an idea of the variability
+   lines(Mean_Hurst[,i]-Stdev_Hurst[,i], type="l", col="red2")
+   lines(rep(0.5, nExp), lty=2, col="blue")  # Horizontal line at 0.5 (lack of long-memory)
+}
+title("Efficiency: Range of variation of Hurst exp of log-returns", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: Overview of the mean/max/min values of the Hurst exponent. It should be around 0.5 (dashed line).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+### Quantitative test: is the Hurst exponent around 0.5?
+
+cat("\n --- Efficiency: Hurst exponent of log-returns --- \n")
+cat("\n Test description: As the log-returns have no long-term memory, their Hurst exponent should be around 0.5. \n\n")
+
+failed=-1  # Stores runs where the Hurst exponent is 'far' from 0.5
+
+for (e in seq(from=1, to=nExp)) {
+   for (k in seq(from=1, to=nAssets)) {
+      for (i in seq(from=0, to=nRuns-1)) {
+         hurst <- hurstSpec(diff(tslogprices[[k+1+i*nAssets +(e-1)*nAssets*nRuns]]))  # Hurst exponent of the log-return series
+         if (hurst < 0.45 || hurst > 0.55) {  # I assume that a Hurst exponent "close to 0.5" means to belong to [0.45, 0.55]
+             failed <- append(failed, i+1)
+             cat(paste("Hurst exponent different from 0.5 in [ A=", k, ", R=", i+1, ", E=", e, "]", "\n"))  # Write the runs where the test failed to a file
+         }
+         #cat(paste("[ A=", k, ", R=", i+1, ", E=", e, "]", ": hurst exponent = ", hurst, "\n"))  # Write the result of each single run to a file
+      }
+   }
+}
+
+percentage_success = (1-((length(failed)-1)/(nAssets*nRuns*nExp))) * 100
+cat("\n % SUCCESS: ", percentage_success, "% \n")  # Percentage of successful runs
+
+
+### Alternative graphical representation: 'heat map' of log-returns persistence (Hurst exponent of log-returns)
+#
+# Objective: Visually summarise the value of the Hurst exponent of log-returns 
+# for each run with a color code (e.g. green when the Hurst exponent is around 0.5 or red
+# when the Hurst exponent is small or big)
+
+for (a in seq(from=1, to=nAssets)) {
+   Hurst_matrix <- array(0, dim=c(nRuns, nExp))  # Array to store the Hurst exponent of each run
+
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)){
+         Hurst_matrix[j+1,k+1] = hurstSpec(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]))   # Store values of Hurst exponent
+      }
+   }
+
+   # Values of Hurst exponent that define the different categories
+   intervals <- c(0, 0.4, 0.45, 0.55, 0.6, 2)
+
+   # prepare label text (use two adjacent values for range text)
+   label_text <- rollapply(round(intervals, 2), width = 2, by = 1, FUN = function(i) paste(i, collapse = "-"))
+
+   # discretize matrix; this is the most important step, where for each value we find category of predefined ranges
+   mod_mat <- matrix(findInterval(Hurst_matrix, intervals, all.inside = TRUE), nrow = nrow(Hurst_matrix))
+
+   # output the graphics
+   df_Hurst <- melt(mod_mat)
+   colnames(df_Hurst) <- c("Run", "Experiment", "value")
+
+   # Obs: 'print' must be explicitly used when the ggplot is inside a loop
+   print(ggplot(df_Hurst, aes(x = Experiment, y = Run, fill = factor(value))) + geom_tile(color = "black") +
+	scale_fill_manual(values = c("1"="red3", "2"="orange", "3"="forestgreen", "4"="orange", "5"="red3"), 
+	limits = c("1", "2", "3", "4", "5"), name = paste("Hurst exponent r \n Asset", a), breaks=c(1,2,3,4,5), labels = label_text))
+}
+
+
+
+#_____________________________________________________________________#
+#                                                                     # 
+#                     EFFICIENCY: VARIANCE RATIO                      #
+#_____________________________________________________________________#
+#                                                                     #
+
+
+### Mean and range of variation of variance ratio of log-returns
+#
+# Objective: The variance ratio is an alternative measure of market efficiency.
+# If the market is efficient and the returns follow a random walk, then the variance
+# ratio is equal to 1. So the more the variance ratio deviates from 1, the less efficient
+# the market is.
+
+Mean_VR <- array(0, dim=c(nExp, nAssets))  # Arrays to store the mean, max and min of the variance ratio statistic of log-returns over all runs (for each asset and experiment)
+Min_VR <- array(0, dim=c(nExp, nAssets))
+Max_VR <- array(0, dim=c(nExp, nAssets))
+
+VR_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the variance ratio of log-returns for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with sum of abs ACF's of asset i for each run
+         VR_vector[,j+1] = Auto.VR(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]))
+      }
+      Max_VR[k+1,i] = max(VR_vector)  # Select max/min of sum of abs ACF's over all runs
+      Min_VR[k+1,i] = min(VR_vector)
+      Mean_VR[k+1,i] = mean(VR_vector)
+   }
+}
+
+
+# Plot mean, minimum, and maximum sum of variance ratio of log-returns
+
+y_min = min(Min_VR)  # Range of y axis
+y_max = max(Max_VR)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_VR[,i], rev(Max_VR[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="", lwd=1, ylim=c(y_min,y_max))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_VR[,i], type="l", col="black", lwd=2)
+   lines(rep(1, nExp), lty=2, col="blue")   # Horizontal line at 1 (value obtained for a random walk)
+}
+title("Efficiency: Range of variation of variance ratio of log-returns", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: If log-returns follow a random walk (efficient market), then the variance ratio is equal to 1.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+### Mean variance ratio of the three assets
+
+VR_values <- array(0, dim=c(nExp, nAssets))   # Array to store the variance ratio of returns over all runs (for each asset and experiment)
+VR_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store variance ratio for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with variance ratio of asset i for each run
+         VR_vector[,j+1] = Auto.VR(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]))
+      }
+      VR_values[k+1,i] = mean(VR_vector)
+   }
+}
+
+par(mfrow=c(1,1), mar=c(5,4,6,1), oma=c(2,2,2,2), mgp=c(3,1,0))  # Margins adjusted so that title and axes labels are properly shown
+matplot(VR_values, type="l", lty=1, col = 1:10, xlab="Experiment", ylab="", main="Efficiency: Variance ratio of returns", col.main="blue")
+legend("topleft", c("Asset 1","Asset 2", "Asset 3"), lty=c(1,1), col=1:10)
+mtext("Objective: Study if variance ratio tends to 1 (brownian motion) along experiments.", side=3, line=-5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+mtext(paste("Parameters:", param_file), side=1, line=5, cex=0.75)  # Add parameter file
+
+
+### Alternative graphical representation: 'heat map' based on the 
+### Chow-Denning Multiple Variance Ratio Test
+#
+# Objective: Visually summarise in how many runs it is accepted
+# that the variance ratio is close to one with a color code 
+# (green if the variance ratio is close to 1, red otherwise)
+
+kvec <- c(2,5,10)  # a vector of holding periods, needed to run the test
+
+for (a in seq(from=1, to=nAssets)) {
+   CDtest_matrix <- array(1, dim=c(nRuns, nExp))  # Array to store the results of the Chow-Denning test of each run
+
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)){
+         CD1 <- Chow.Denning(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]), kvec)$CD1    # Statistic for test for iid series
+         CD2 <- Chow.Denning(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]), kvec)$CD2    # Statistic for test for uncorrelated series with possible heteroskedasticity
+         critical_value_5_percent <- Chow.Denning(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]), kvec)$Critical.Values_10_5_1_percent[2]
+
+         if (min(CD1, CD1) > critical_value_5_percent) {
+            CDtest_matrix[j+1,k+1] = 0   # Store results of the test (0: test rejected = No random walk, 1: test accepted = Random walk)
+         }
+      }
+   }
+
+   # Values of p value that define the different categories
+   intervals <- c(0, 0.5, 1)
+
+   # prepare label text (use two adjacent values for range text)
+   label_text <- rollapply(round(intervals, 2), width = 2, by = 1, FUN = function(i) paste(i, collapse = "-"))
+
+   # discretize matrix; this is the most important step, where for each value we find category of predefined ranges
+   mod_mat <- matrix(findInterval(CDtest_matrix, intervals, all.inside = TRUE), nrow = nrow(CDtest_matrix))
+
+   # output the graphics
+   df_CDtest <- melt(mod_mat)
+   colnames(df_CDtest) <- c("Run", "Experiment", "value")
+
+   # Obs: 'print' must be explicitly used when the ggplot is inside a loop
+   print(ggplot(df_CDtest, aes(x = Experiment, y = Run, fill = factor(value))) + geom_tile(color = "black") +
+	scale_fill_manual(values = c("1"="red3", "2"="palegreen3"), 
+	limits = c("1", "2"), name = paste("VR equal to 1 \n Chow-Denning test \n Asset", a), breaks=c(1,2), labels = label_text))
+}
+
+
+### Alternative graphical representation: cdplot of runs where the variance 
+### ratio is 1, based on the Lo-Mackinlay test for different periods
+#
+# Objective: Visually summarise in how many runs it is accepted
+# that the variance ratio is close to one with a color code 
+# (green if the variance ratio is close to 1, red otherwise)
+
+for (i in seq(from=1, to=nAssets)) {
+
+   # Count in how many runs the absolute returns have long-term memory
+   test_rejected_q5 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_q10 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_q20 <- array(0, dim=c(nExp, nRuns))
+   test_rejected_q40 <- array(0, dim=c(nExp, nRuns))
+
+   for (e in seq(from=1, to=nExp)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         LM_test_q5  <- Lo.Mac(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), 5)    # Test for 5 time steps
+         LM_test_q10 <- Lo.Mac(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), 10)   # Test for 10 time steps
+         LM_test_q20 <- Lo.Mac(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), 20)   # Test for 20 time steps
+         LM_test_q40 <- Lo.Mac(diff(tslogprices[[i+1+j*nAssets +(e-1)*nAssets*nRuns]]), 40)   # Test for 40 time steps
+
+         if ( abs(LM_test_q5$Stats[1]) > 1.96 || abs(LM_test_q5$Stats[2]) > 1.96 ) {
+            test_rejected_q5[e,j+1] = 1
+         }
+         if ( abs(LM_test_q10$Stats[1]) > 1.96 || abs(LM_test_q10$Stats[2]) > 1.96 ) {
+            test_rejected_q10[e,j+1] = 1
+         }
+         if ( abs(LM_test_q20$Stats[1]) > 1.96 || abs(LM_test_q20$Stats[2]) > 1.96 ) {
+            test_rejected_q20[e,j+1] = 1
+         }
+         if ( abs(LM_test_q40$Stats[1]) > 1.96 || abs(LM_test_q40$Stats[2]) > 1.96 ) {
+            test_rejected_q40[e,j+1] = 1
+         }
+      }
+   }
+
+   # Convert numeric vectors to factors to draw cdplots
+   LM_q5  <- factor(test_rejected_q5, levels = 0:1, labels = c("yes", "no"))
+   LM_q10 <- factor(test_rejected_q10, levels = 0:1, labels = c("yes", "no"))
+   LM_q20 <- factor(test_rejected_q20, levels = 0:1, labels = c("yes", "no"))
+   LM_q40 <- factor(test_rejected_q40, levels = 0:1, labels = c("yes", "no"))
+
+   # Draw cdplots
+   par(mfrow=c(2,2), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+   x_axis <- rep(1:nExp,nRuns)
+
+   cdplot(LM_q5~x_axis, xlab="Experiment", ylab="VR=1?", main="Lo-MacKinlay - 5 time steps", col = c("palegreen", "red3"))
+   cdplot(LM_q10~x_axis, xlab="Experiment", ylab="VR=1?", main="Lo-MacKinlay - 10 time steps", col = c("palegreen", "red3"))
+   cdplot(LM_q20~x_axis, xlab="Experiment", ylab="VR=1?", main="Lo-MacKinlay - 20 time steps", col = c("palegreen", "red3"))
+   cdplot(LM_q40~x_axis, xlab="Experiment", ylab="VR=1?", main="Lo-MacKinlay - 40 time steps", col = c("palegreen", "red3"))
+   
+   title(paste("Efficiency: Is the variance ratio equal to 1? (Lo-MacKinlay test) - Asset ", i), outer = TRUE, col.main="blue", font.main=2)
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+
+#_______________________________________________________________#
+#                                                               #
+#                    EFFICIENCY: UNIT ROOT                      #
+#_______________________________________________________________#
+#                                                               #
+
+### Quantitative test: Measure in how many runs there is a unit root
+#
+# The standard test for this property is the Dickey-Fuller test, which 
+# in the presence of a unit root is not rejected 
+
+cat("\n --- Efficiency: Unit root of log prices (with Augmented Dickey-Fuller test) --- \n")
+cat("\n Test description: When there is a unit root in prices (that is, prices follow an autoregressive process) the Dickey-Fuller test is not rejected. \n\n")
+
+require(tseries)
+failed=-1  # Stores runs where the Dickey-Fuller test has been rejected
+
+for (e in seq(from=1, to=nExp)) {
+   for (k in seq(from=1, to=nAssets)) {
+      for (i in seq(from=0, to=nRuns-1)) {
+         unitroot <- adf.test(tslogprices[[k+1+i*nAssets +(e-1)*nAssets*nRuns]])  # Non-rejection of the test (pvalue higher than e.g. 0.05) indicates there is a unit root
+         if (unitroot$p.value < 0.05) {
+             failed <- append(failed, i+1)
+             cat(paste("Unit root failed in [ A=", k, ", R=", i+1, ", E=", e, "]", "\n"))  # Write the runs where the test failed to a file
+         }
+         #cat(paste("[ A=", k, ", R=", i+1, ", E=", e, "]", ": p-value = ", unitroot$p.value, "\n"))  # Write the result of each single run to a file
+      }
+   }
+}
+
+percentage_success = (1-((length(failed)-1)/(nAssets*nRuns*nExp))) * 100
+cat("\n % SUCCESS of Unit root test: ", percentage_success, "% \n")  # Percentage of successful runs
+
+
+### Graphical representation: cdplot of runs where there is a unit root in log prices
+#
+# Objective: Count in how many runs there is a unit root (that is, the 
+# Augmented Dickey-Fuller test is not rejected)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3))
+for (i in seq(from=1, to=nAssets)) {
+
+   # Count in how many runs the Augmented Dickey-Fuller test is not rejected (at confidence level 95%)
+   ADF_accepted <- array(0, dim=c(nExp, nRuns))
+   
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         if ( adf.test(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]])$p.value > 0.05 ) {
+            ADF_accepted[k+1,j+1] = 1
+         }
+      }
+   }
+
+   # Convert numeric vector to factor to draw cdplot
+   unitroot <- factor(ADF_accepted, levels = 0:1, labels = c("no", "yes"))
+
+   # Draw cdplot
+   x_axis <- rep(1:nExp,nRuns)
+   cdplot(unitroot~x_axis, xlab="Experiment", ylab="Unit root?", main=paste("Asset ", i), col=c("red3", "palegreen"))
+}
+title("Efficiency: Unit root in log prices", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: There is a unit root in the series of (log) prices, that is, prices are autoregressive (used ADF test)", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+### Alternative graphical representation: 'heat map' of unit roots (based on the Dickey-Fuller test)
+#
+# Objective: Visually summarise in how many runs there is a unit root
+# with a color code (green if there is a unit root, red otherwise)
+
+for (a in seq(from=1, to=nAssets)) {
+   UR_matrix <- array(0, dim=c(nRuns, nExp))  # Array to store the results of the unit root test of each run
+
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)){
+         UR_matrix[j+1,k+1] = adf.test(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]])$p.value   # Store values of Hurst exponent
+      }
+   }
+
+   # Values of p value that define the different categories
+   intervals <- c(0, 0.05, 1)
+
+   # prepare label text (use two adjacent values for range text)
+   label_text <- rollapply(round(intervals, 2), width = 2, by = 1, FUN = function(i) paste(i, collapse = "-"))
+
+   # discretize matrix; this is the most important step, where for each value we find category of predefined ranges
+   mod_mat <- matrix(findInterval(UR_matrix, intervals, all.inside = TRUE), nrow = nrow(UR_matrix))
+
+   # output the graphics
+   df_UR <- melt(mod_mat)
+   colnames(df_UR) <- c("Run", "Experiment", "value")
+
+   # Obs: 'print' must be explicitly used when the ggplot is inside a loop
+   print(ggplot(df_UR, aes(x = Experiment, y = Run, fill = factor(value))) + geom_tile(color = "black") +
+	scale_fill_manual(values = c("1"="red3", "2"="palegreen3"), 
+	limits = c("1", "2"), name = paste("Unit root \n Asset", a), breaks=c(1,2), labels = label_text))
+}
+
+
+
+#_______________________________________________________________#
+#                                                               #
+#                    EFFICIENCY: RUNS TEST                      #
+#_______________________________________________________________#
+#                                                               #
+
+### Alternative graphical representation: 'heat map' based on the 
+### Runs Test
+#
+# Objective: The runs test is a non-parametric test for randomness.
+# The following graphic visually summarises in how many runs it is accepted
+# that the changes in returns are generated by a random process
+# (green if the process is random, red otherwise)
+
+for (a in seq(from=1, to=nAssets)) {
+   runs_matrix <- array(0, dim=c(nRuns, nExp))  # Array to store the results of the runs test of each run
+
+   for (k in seq(from=0, to=nExp-1)) {
+      for (j in seq(from=0, to=nRuns-1)){
+         runs_matrix[j+1,k+1] = runs.test(factor(sign(diff(tslogprices[[a+1+j*nAssets+k*nAssets*nRuns]]))))$p.value   # Store values of runs test
+      }
+   }
+
+   # Values of p value that define the different categories
+   intervals <- c(0, 0.05, 1)
+
+   # prepare label text (use two adjacent values for range text)
+   label_text <- rollapply(round(intervals, 2), width = 2, by = 1, FUN = function(i) paste(i, collapse = "-"))
+
+   # discretize matrix; this is the most important step, where for each value we find category of predefined ranges
+   mod_mat <- matrix(findInterval(runs_matrix, intervals, all.inside = TRUE), nrow = nrow(runs_matrix))
+
+   # output the graphics
+   df_runsTest <- melt(mod_mat)
+   colnames(df_runsTest) <- c("Run", "Experiment", "value")
+
+   # Obs: 'print' must be explicitly used when the ggplot is inside a loop
+   print(ggplot(df_runsTest, aes(x = Experiment, y = Run, fill = factor(value))) + geom_tile(color = "black") +
+	scale_fill_manual(values = c("1"="red3", "2"="palegreen3"), 
+	limits = c("1", "2"), name = paste("Runs test of r \n Asset", a), breaks=c(1,2), labels = label_text))
+}
+
+
+
+
+#____________________________________________________________________________#
+#                                                                            # 
+#              EFFICIENCY: DIFFERENCE BETWEEN PRICE AND VALUE                #
+#____________________________________________________________________________#
+#                                                                            #
+
+
+### Plot of prices vs values (averaged over runs)
+
+y_max = max(max(tsvalues_avg[,1:(nAssets*nExp)]), max(tsprices_avg[,1:(nAssets*nExp)]))
+y_min = min(min(tsvalues_avg[,1:(nAssets*nExp)]), min(tsprices_avg[,1:(nAssets*nExp)]))
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot(tsprices_avg[,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(y_min,y_max), xlab="Tick", ylab="Price vs Value")
+      lines(tsvalues_avg[,(e-1)*nAssets+k], type="l", col="red")
+   }
+   title(paste("Efficiency: Average prices vs values (over runs) - Asset", k), outer = TRUE, col.main="red", font.main=2)   
+   mtext("Objective: Study if mean prices are pushed toward mean values (over experiments).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+### Plot of difference between prices and values (averaged over runs)
+
+y_max = max(tsvalues_avg[,1:(nAssets*nExp)]) - min(tsprices_avg[,1:(nAssets*nExp)])
+y_min = min(tsvalues_avg[,1:(nAssets*nExp)]) - max(tsprices_avg[,1:(nAssets*nExp)])
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot((tsprices_avg-tsvalues_avg)[,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(y_min,y_max), xlab="Tick", ylab="Price-Value")
+   }
+   title(paste("Efficiency: Difference between average prices and values (over runs) - Asset", k), outer = TRUE, col.main="red", font.main=2)   
+   mtext("Objective: Study if the difference between prices and values changes along experiments.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+### Calculate average distance (L1) of each price series to value
+
+dist_prices_values <- array(0, dim=c(nExp, nAssets))   # Array to store the mean distance between price and fundamental value over all runs (for each asset and experiment)
+distance_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the distance d(P,V) for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with distance d(P,V) of asset i for each run
+         #distance_vector[,j+1] = sqrt(sum((tsprices[[i+1+j*nAssets+k*nAssets*nRuns]] - tsvalues[[i+1+j*nAssets+k*nAssets*nRuns]])^2))/nTicks
+         distance_vector[,j+1] = (sum(abs(tsprices[[i+1+j*nAssets+k*nAssets*nRuns]] - tsvalues[[i+1+j*nAssets+k*nAssets*nRuns]])))/nTicks
+      }
+      dist_prices_values[k+1,i] = mean(distance_vector)
+   }
+}
+
+# Plot average distance of each asset price to values (for each experiment)
+
+par(mfrow=c(1,1), mar=c(5,4,6,1), oma=c(2,2,2,2), mgp=c(3,1,0))  # Margins adjusted so that title and axes labels are properly shown
+matplot(dist_prices_values, type="l", lty=1, col = 1:10, xlab="Experiment", ylab="", main="Efficiency: Average of distance between asset prices ans values", col.main="blue")
+legend("topleft", c("Asset 1","Asset 2", "Asset 3"), lty=c(1,1), col=1:10)
+mtext("Objective: Study if mean distance between prices and values changes along experiments.", side=3, line=-5, col="red", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+mtext(paste("Parameters:", param_file), side=1, line=5, cex=0.75)  # Add parameter file
+
+
+
+### Calculate distance (L1) between prices_avg and values_avg
+
+dist_prices_values <- array(0, dim=c(nExp, nAssets))   # Array to store the mean distance between price and fundamental value over all runs (for each asset and experiment)
+distance_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the distance d(P,V) for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {      
+      dist_prices_values[k+1,i] = (sum(abs(tsprices_avg[,i+k*nAssets] - tsvalues_avg[,i+k*nAssets])))/nTicks
+   }
+}
+
+# Plot distance of prices_avg to values_avg (for each experiment)
+
+par(mfrow=c(1,1), mar=c(5,4,6,1), oma=c(2,2,2,2), mgp=c(3,1,0))  # Margins adjusted so that title and axes labels are properly shown
+matplot(dist_prices_values, type="l", lty=1, col = 1:10, xlab="Experiment", ylab="", main="Efficiency: Distance between average prices and values", col.main="red")
+legend("topleft", c("Asset 1","Asset 2", "Asset 3"), lty=c(1,1), col=1:10)
+mtext("Objective: Study if distance between mean prices and mean values changes along experiments.", side=3, line=-5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+mtext(paste("Parameters:", param_file), side=1, line=5, cex=0.75)  # Add parameter file
+
+
+
+### Distance of each price series to value
+#
+# Objective: Study if the L1 distance between the series of prices and
+# fundamental value gets smaller (and so the market is more efficient) when there 
+# are more LS traders in the market 
+
+Mean_dist <- array(0, dim=c(nExp, nAssets))  # Arrays to store the mean, max and min of the sum of ACF's (in abs value) at each lag over all runs (for each asset and experiment)
+Min_dist <- array(0, dim=c(nExp, nAssets))
+Max_dist <- array(0, dim=c(nExp, nAssets))
+
+distance_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the sum of abs ACF's for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with distance d(P,V) of asset i for each run
+         distance_vector[,j+1] = (sum(abs(tsprices[[i+1+j*nAssets+k*nAssets*nRuns]] - tsvalues[[i+1+j*nAssets+k*nAssets*nRuns]])))/nTicks
+      }
+      Max_dist[k+1,i] = max(distance_vector)  # Select max/min of distance d(P,V) over all runs
+      Min_dist[k+1,i] = min(distance_vector)
+      Mean_dist[k+1,i] = mean(distance_vector)
+   }
+}
+
+# Plot mean, minimum, and maximum of distance d(P,V)
+
+y_min = min(Min_dist)  # Range of y axis
+y_max = max(Max_dist)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_dist[,i], rev(Max_dist[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="", lwd=1, ylim=c(y_min,y_max))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_dist[,i], type="l", col="black", lwd=2)
+   lines(rep(0, nExp), lty=2, col="blue")   # Horizontal line at 0
+}
+title("Efficiency: Range of variation of distance between individual series of prices and values", outer = TRUE, col.main="red", font.main=2)
+mtext("Test description: Overview of the mean/max/min values of the distance between price and value.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+### Boxplot of distance between price and value, along experiments
+# Description of notched boxplots: https://sites.google.com/site/davidsstatistics/home/notched-box-plots
+
+distance_matrix <- array(0, dim=c(nRuns, nAssets*nExp))   # Auxiliary array to store the distance d(P,V) for each run and asset
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate matrix with volatility of asset i for each run
+         distance_matrix[j+1,i+k*nAssets] = (sum(abs(tsprices[[i+1+j*nAssets+k*nAssets*nRuns]] - tsvalues[[i+1+j*nAssets+k*nAssets*nRuns]])))/nTicks
+      }
+   }
+}
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   boxplot(distance_matrix[,seq(i,nAssets*nExp,nAssets)], notch=TRUE, col="gold", main=paste("Asset", i), xlab="")
+}
+title("Efficiency: Range of variation of distance between price and value", outer = TRUE, col.main="red", font.main=2)
+mtext("Test description: Overview of the distribution of distance d(P,V).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+#_______________________________________________________________#
+#                                                               #
+#               EFFICIENCY: PERFORMANCE OF TRENDs               #
+#_______________________________________________________________#
+#                                                               #
+
+# The performance of TRENDs can be used to study the efficiency of the market,
+# because in a perfectly efficient market the TRENDs cannot make profits
+
+
+### Plot of time series of wealth increment (averaged over runs)
+
+y_max = max(tsTRENDwealth_avg[,1:(nAssets*nExp)])
+y_min = min(tsTRENDwealth_avg[,1:(nAssets*nExp)])
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot(tsTRENDwealth_avg[,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(y_min,y_max), xlab="Tick", ylab="Wealth", col="seagreen")
+      lines(rep(0, nTicks), lty=2, col="blue")  # Horizontal line at 0 (no profits)
+   }
+   title(paste("Efficiency: Increment in wealth of TRENDs (averaged over runs) - Asset", k), outer = TRUE, col.main="blue", font.main=2)   
+   mtext("If the market is perfectly efficient, the TRENDs cannot make profits.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+### Plot of final wealth (averaged over runs)
+
+y_max = max(tsTRENDwealth[,2:(nAssets*nRuns*nExp+1)])
+y_min = min(tsTRENDwealth[,2:(nAssets*nRuns*nExp+1)])
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+
+for (k in seq(from=1, to=nAssets)) {
+   indices <- seq(from=k, to=(nExp-1)*nAssets+k, by=nAssets)
+   plot(tsTRENDwealth_avg[nTicks, indices], type="l", main=paste("Asset", k), xlab="Experiment", ylab="Wealth", ylim=c(y_min, y_max), lwd=2, col="seagreen")
+   lines(rep(0, nExp), lty=2, col="blue")  # Horizontal line at 0 (no profits)
+}
+title(paste("Efficiency: Final wealth of TRENDs (averaged over runs)"), outer = TRUE, col.main="blue", font.main=2)   
+mtext("If the market is perfectly efficient, the TRENDs cannot make profits.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+
+#_____________________________________________________________#
+#                                                             #
+#                    VOLATILITY OF PRICES                     #
+#_____________________________________________________________#
+#                                                             #
+
+### Plot of price volatility series
+
+mw = 250  # Length of moving window
+tsvolatility <- array(0, dim=c(nTicks, nAssets*nExp*nRuns))
+tsvolatility_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+
+for (j in seq(from=1, to=nAssets*nExp*nRuns)) {
+   for (i in seq(from=1, to=nTicks-mw)) {
+      tsvolatility[i+mw,j] <- sd(tsprices[i:(i+mw-1),1+j], na.rm = FALSE)
+   }
+}
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         tsvolatility_avg[,i+k*nAssets] <- tsvolatility_avg[,i+k*nAssets] + tsvolatility[,i+j*nAssets+k*nAssets*nRuns]
+      }
+      tsvolatility_avg[,i+k*nAssets] <- tsvolatility_avg[,i+k*nAssets]/nRuns
+   }
+}
+
+y_max = max(tsvolatility_avg[(1+mw):nTicks, 1:(nAssets*nExp)])
+y_min = min(tsvolatility_avg[(1+mw):nTicks, 1:(nAssets*nExp)])
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot(tsvolatility_avg[(mw+1):nTicks,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(y_min,y_max), xlab="Tick", ylab="Volatility", xaxt="n")
+      #axis(2, at=seq(0.08,0.1,by=.005), labels=paste(100*seq(0.08,0.1,by=.005), "%") )  # adjust y axis to show percentages
+      axis(1, at=seq(0,nTicks-mw,by=250), labels=seq(mw,nTicks,by=250))
+   }
+   title(paste("Price volatility (over runs) - Asset", k), outer = TRUE, col.main="blue", font.main=2)   
+   mtext("Objective: Study if the price volatility changes along experiments.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+#### Plot the variation of volatility of price, calculated as the mean of the time
+## series of price volatility (calculated above)
+##
+## This is just a test to confirm the trends in volatility observed in previous plots
+##
+## Objective: Study the range of variation of volatility over experiments
+#
+#par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+#
+#for (k in seq(from=1, to=nAssets)) {
+#
+#   volatility_P_matrix <- array(0, dim=c(nRuns*nExp, 2))   # Create a matrix: (experiment , volatility)
+#     
+#   for (e in seq(from=0, to=nExp-1)) {
+#      for (i in seq(from=0, to=nRuns-1)) {
+#	   volatility_P_matrix[i+1+e*nRuns,1] = e+1
+#	   volatility_P_matrix[i+1+e*nRuns,2] = mean(tsvolatility[,k+i*nAssets+e*nAssets*nRuns])
+#      }
+#   }
+#
+#   plot(volatility_P_matrix[,1], volatility_P_matrix[,2], main=paste("Asset", k), xlab="Experiment", ylab="Mean volatility", pch=21)
+#   abline(lin_reg <- lm(volatility_P_matrix[,2]~volatility_P_matrix[,1]), col="red")   # regression line (volatility ~ experiment)
+#   mtext(paste("slope =", round(coef(lin_reg)[2],2), ",  R^2 =", round(summary(lin_reg)$r.squared,2)), side=3, line=0.1, cex=0.6, col="red")  # Add parameter file
+#}
+#
+#title("Mean of price volatility time series", outer = TRUE, col.main="blue", font.main=2)
+#mtext("Test description: Overview of the mean values of volatility time series (stdev of prices).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+#mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+### Plot the mean and range of variation of volatility of price time series (averaged over runs)
+# Objective: Study the range of variation of volatility over experiments
+
+# Calculate the min/max value of price volatility over all runs for each asset
+
+Max_volat <- array(0, dim=c(nExp, nAssets))  # Arrays to store the max and min volatility over all runs (for each asset and experiment)
+Min_volat <- array(0, dim=c(nExp, nAssets))
+Mean_volat <- array(0, dim=c(nExp, nAssets))  # Array to store the mean volatility over all runs (for each asset and experiment)
+Stdev_volat <- array(0, dim=c(nExp, nAssets))  # Array to store the standard deviation of volatility over all runs (for each asset and experiment)
+
+asset_volatility_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the volatility for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with volatility of asset i for each run
+         asset_volatility_vector[,j+1] = sd(tsprices[[i+1+j*nAssets+k*nAssets*nRuns]], na.rm = FALSE)   # Store values of volatility
+      }
+      Max_volat[k+1,i] = max(asset_volatility_vector)  # Select max/min volatility over all runs
+      Min_volat[k+1,i] = min(asset_volatility_vector)
+      Mean_volat[k+1,i] = mean(asset_volatility_vector)
+      Stdev_volat[k+1,i] = sd(asset_volatility_vector[1,])
+   }
+}
+
+# Plot mean, minimum, and maximum volatility
+
+y_min = min(Min_volat)  # Range of y axis
+y_max = max(Max_volat)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_volat[,i], rev(Max_volat[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="Max/Min volatility", lwd=1, ylim=c(y_min,y_max))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_volat[,i], type="l", col="black", lwd=2)
+   lines(Mean_volat[,i]+Stdev_volat[,i], type="l", col="red2")   # Plot +-1stdev to have an idea of the variability
+   lines(Mean_volat[,i]-Stdev_volat[,i], type="l", col="red2")
+}
+title("Range of variation of price volatility", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: Overview of the mean/max/min values of volatility (stdev of prices).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+### Boxplot of volatility along experiments
+# Description of notched boxplots: https://sites.google.com/site/davidsstatistics/home/notched-box-plots
+
+volatility_matrix <- array(0, dim=c(nRuns, nAssets*nExp))   # Auxiliary array to store the price volatility for each run and asset
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate matrix with volatility of asset i for each run
+         volatility_matrix[j+1,i+k*nAssets] = sd(tsprices[[1+i+j*nAssets+k*nAssets*nRuns]])   # Store the volatility (calculated as the std dev of prices)
+      }
+   }
+}
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   boxplot(volatility_matrix[,seq(i,nAssets*nExp,nAssets)], notch=TRUE, col="gold", main=paste("Asset", i), xlab="")
+}
+title("Range of variation of price volatility", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: Overview of the distribution of volatility (stdev of prices).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+
+### Plot of annualised return volatility series
+
+mw = 250  # Length of moving window
+tsvolatility <- array(0, dim=c(nTicks, nAssets*nExp*nRuns))
+tsvolatility_avg <- array(0, dim=c(nTicks, nAssets*nExp))
+
+for (j in seq(from=1, to=nAssets*nExp*nRuns)) {
+   for (i in seq(from=1, to=nTicks-mw)) {
+      tsvolatility[i+mw,j] <- sd(diff(tslogprices[i:(i+mw-1),1+j]), na.rm = FALSE)
+   }
+}
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)) {
+         tsvolatility_avg[,i+k*nAssets] <- tsvolatility_avg[,i+k*nAssets] + tsvolatility[,i+j*nAssets+k*nAssets*nRuns]
+      }
+      tsvolatility_avg[,i+k*nAssets] <- tsvolatility_avg[,i+k*nAssets]/nRuns
+   }
+}
+
+tsvolatility_avg_annualised <- tsvolatility_avg*sqrt(252)  # annualise volatility
+
+y_max = max(tsvolatility_avg_annualised[(1+mw):nTicks, 1:(nAssets*nExp)])
+y_min = min(tsvolatility_avg_annualised[(1+mw):nTicks, 1:(nAssets*nExp)])
+
+for (k in seq(from=1, to=nAssets)) {
+   par(mfrow=c(numRows,numCols), mar=c(3,4,3,1), oma=c(3,3,5,3))
+   for (e in seq(from=1, to=nExp)) {      
+      plot(tsvolatility_avg_annualised[(mw+1):nTicks,(e-1)*nAssets+k], type="l", main=paste("Exp", e), ylim=c(y_min,y_max), xlab="Tick", ylab="Volatility", xaxt="n")
+      #axis(2, at=seq(0.08,0.1,by=.005), labels=paste(100*seq(0.08,0.1,by=.005), "%") )  # adjust y axis to show percentages
+      axis(1, at=seq(0,nTicks-mw,by=250), labels=seq(mw,nTicks,by=250))
+   }
+   title(paste("Annualised return volatility (over runs) - Asset", k), outer = TRUE, col.main="blue", font.main=2)   
+   mtext("Objective: Study if the volatility changes along experiments.", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the graph objective
+   mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+}
+
+
+#### Plot the variation of volatility of returns, calculated as the mean of the time
+## series of returns volatility (calculated above)
+##
+## This is just a test to confirm the trends in volatility observed in previous plots
+##
+## Objective: Study the range of variation of volatility over experiments
+#
+#par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+#
+#for (k in seq(from=1, to=nAssets)) {
+#
+#   volatility_r_matrix <- array(0, dim=c(nRuns*nExp, 2))   # Create a matrix: (experiment , volatility)
+#      
+#   for (e in seq(from=0, to=nExp-1)) {
+#      for (i in seq(from=0, to=nRuns-1)) {
+#	   volatility_r_matrix[i+1+e*nRuns,1] = e+1
+#	   volatility_r_matrix[i+1+e*nRuns,2] = mean(tsvolatility[,k+i*nAssets+e*nAssets*nRuns])
+#      }
+#   }
+#
+#   plot(volatility_r_matrix[,1], volatility_r_matrix[,2], main=paste("Asset", k), xlab="Experiment", ylab="Mean volatility", pch=21)
+#   abline(lin_reg <- lm(volatility_r_matrix[,2]~volatility_r_matrix[,1]), col="red")   # regression line (volatility ~ experiment)
+#   mtext(paste("slope =", round(coef(lin_reg)[2],2), ",  R^2 =", round(summary(lin_reg)$r.squared,2)), side=3, line=0.1, cex=0.6, col="red")  # Add parameter file
+#}
+#
+#title("Mean of return volatility time series", outer = TRUE, col.main="blue", font.main=2)
+#mtext("Test description: Overview of the mean values of volatility time series (stdev of returns).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+#mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+### Plot the mean and range of variation of volatility of return time series (averaged over runs)
+# Objective: Study the range of variation of volatility over experiments
+
+# Calculate the min/max value of return volatility over all runs for each asset
+
+Max_volat <- array(0, dim=c(nExp, nAssets))  # Arrays to store the max and min volatility over all runs (for each asset and experiment)
+Min_volat <- array(0, dim=c(nExp, nAssets))
+Mean_volat <- array(0, dim=c(nExp, nAssets))  # Array to store the mean volatility over all runs (for each asset and experiment)
+
+asset_volatility_vector <- array(0, dim=c(1, nRuns))  # Auxiliary vector to store the volatility for one asset (over all runs)
+
+for (k in seq(from=0, to=nExp-1)) {
+   for (i in seq(from=1, to=nAssets)) {
+      for (j in seq(from=0, to=nRuns-1)){     # Calculate vector with volatility of asset i for each run
+         asset_volatility_vector[,j+1] = sd(diff(tslogprices[[i+1+j*nAssets+k*nAssets*nRuns]]), na.rm = FALSE)   # Store values of volatility
+      }
+      Max_volat[k+1,i] = max(asset_volatility_vector)  # Select max/min volatility over all runs
+      Min_volat[k+1,i] = min(asset_volatility_vector)
+      Mean_volat[k+1,i] = mean(asset_volatility_vector)
+   }
+}
+
+# Plot mean, minimum, and maximum volatility
+
+y_min = min(Min_volat)  # Range of y axis
+y_max = max(Max_volat)
+
+par(mfrow=c(nAssets,1), mar=c(3,4,3,1), oma=c(3,3,5,3), mgp=c(1.75,0.5,0))
+for (i in seq(from=1, to=nAssets)) {
+   #dev.new()         # Plots each figure in a new window
+   xx <- c(1:nExp, nExp:1)   # Needed to shade the area between max and min
+   yy <- c(Min_volat[,i], rev(Max_volat[,i]))
+   plot(xx,yy, type="l", main=paste("Asset", i), col="black", 
+	xlab="Experiment", ylab="Max/Min volatility", lwd=1, ylim=c(y_min,y_max))
+   polygon(xx, yy, col="gray")
+
+   lines(Mean_volat[,i], type="l", col="black", lwd=2)
+   lines(Mean_volat[,i]+Stdev_volat[,i], type="l", col="red2")   # Plot +-1stdev to have an idea of the variability
+   lines(Mean_volat[,i]-Stdev_volat[,i], type="l", col="red2")
+}
+title("Range of variation of return volatility", outer = TRUE, col.main="blue", font.main=2)
+mtext("Test description: Overview of the mean/max/min values of volatility (stdev of returns).", side=3, line=0.5, col="blue", cex=0.6, outer=TRUE)  # Add explanation of the test
+mtext(paste("Parameters:", param_file), side=1, line=3, cex=0.75)  # Add parameter file
+
+
+# ----------------------------------------------- #
+
+dev.off()  # Close output files
+sink()
+
+# ----------------------------------------------- #
+
+

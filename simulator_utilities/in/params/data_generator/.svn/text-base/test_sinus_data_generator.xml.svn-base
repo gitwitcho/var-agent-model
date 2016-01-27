@@ -1,0 +1,7 @@
+<info.financialecology.finance.utilities.test.TestSinusDataGeneratorParams>
+  <nTicks>1000</nTicks>
+  <mean>c(0,100,-50)</mean>
+  <amplitude>c(30,30, 100)</amplitude>
+  <shift>c(0,-50, 0)</shift>
+  <lambda>c(100,100,-500)</lambda>
+</info.financialecology.finance.utilities.test.TestSinusDataGeneratorParams>

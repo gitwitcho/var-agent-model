@@ -1,0 +1,71 @@
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2
+END
+trend_value_abm_basisExp_valueOffset.xml
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_valueOffset.xml
+END
+trend_value_abm_basisExp_maLongTicks.xml
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_maLongTicks.xml
+END
+trend_value_abm_basisExp_sigmaValue.xml
+K 25
+svn:wc:ra_dav:version-url
+V 123
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_sigmaValue.xml
+END
+trend_value_abm_basisExp_maShortTicks.xml
+K 25
+svn:wc:ra_dav:version-url
+V 125
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_maShortTicks.xml
+END
+trend_value_abm_basisExp_exitThreshold.xml
+K 25
+svn:wc:ra_dav:version-url
+V 126
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_exitThreshold.xml
+END
+trend_value_abm_basisExp_sigmaPrice.xml
+K 25
+svn:wc:ra_dav:version-url
+V 123
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_sigmaPrice.xml
+END
+trend_value_abm_basisExp.xml
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp.xml
+END
+trend_value_abm_basisExp_10000ticks.xml
+K 25
+svn:wc:ra_dav:version-url
+V 123
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_10000ticks.xml
+END
+trend_value_abm_basisExp_numFunds_numTrends.xml
+K 25
+svn:wc:ra_dav:version-url
+V 131
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_numFunds_numTrends.xml
+END
+trend_value_abm_basisExp_bcTicksTrend.xml
+K 25
+svn:wc:ra_dav:version-url
+V 125
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_bcTicksTrend.xml
+END
+trend_value_abm_basisExp_entryThreshold.xml
+K 25
+svn:wc:ra_dav:version-url
+V 127
+/svn/!svn/ver/565/trunk/agentsimulator/in/params/TrendValueAbm/single_asset/BLThCh2/trend_value_abm_basisExp_entryThreshold.xml
+END

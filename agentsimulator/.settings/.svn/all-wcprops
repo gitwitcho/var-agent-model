@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/277/trunk/agentsimulator/.settings
+END
+edu.umd.cs.findbugs.plugin.eclipse.prefs
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/!svn/ver/90/trunk/agentsimulator/.settings/edu.umd.cs.findbugs.plugin.eclipse.prefs
+END
+edu.umd.cs.findbugs.core.prefs
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/!svn/ver/90/trunk/agentsimulator/.settings/edu.umd.cs.findbugs.core.prefs
+END
+org.eclipse.jdt.core.prefs
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/277/trunk/agentsimulator/.settings/org.eclipse.jdt.core.prefs
+END

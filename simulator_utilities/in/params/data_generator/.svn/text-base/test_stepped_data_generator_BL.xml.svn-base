@@ -1,0 +1,7 @@
+<info.financialecology.finance.utilities.test.TestSteppedDataGeneratorParams>
+  <nTicks>100</nTicks>
+  <shift>c(0,-30, 20)</shift>
+  <stepHeight>c(10,-25, 10)</stepHeight>
+  <stepWidth>c(10,20,30)</stepWidth>
+  <valleyWidth>c(1,5,10)</valleyWidth>
+</info.financialecology.finance.utilities.test.TestSteppedDataGeneratorParams>

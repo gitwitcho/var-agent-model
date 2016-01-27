@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/!svn/ver/540/trunk/agentsimulator
+END
+manifest.mf
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/142/trunk/agentsimulator/manifest.mf
+END
+.project
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/65/trunk/agentsimulator/.project
+END
+mymanifest.mf
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/270/trunk/agentsimulator/mymanifest.mf
+END
+.classpath
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/404/trunk/agentsimulator/.classpath
+END
