@@ -27,8 +27,6 @@ The market contains multiple assets – the number of assets is specified by the
 
 <em>NOTE</em>: A detailed description of the model can be found in: Llacay, B. (2015). “El impacto de las técnicas VaR en los mercados financieros. Enfoque basado en la simulación multiagente.” PhD Dissertation, University of Barcelona.
 
-## Parameters
-
 ## How to run a simulation
 <b>Run configuration</b>. The <tt>***Simulation</tt> files contain the method <tt>main()</tt>. The simulation parameters are read from an xml file (see ‘Input’ subsection below); the launch configuration needs thus to be modified, so that the parameter file is passed as an argument when the simulation is executed.
 
@@ -38,8 +36,262 @@ Although the model parameters are read from an xml file (see ‘Input’ subsect
 <li> Variability of VaR limits: by default, the VaR limits used by the traders are constant. However, the model allows to study what happens when this limit is variable and procyclical (it increases (decreases) when volatility goes up (down)) or countercyclical (it decreases (increases) when volatility goes up (down)). This is done through the variable <tt>VariabilityVarLimit</tt></li>
 <li> Use of stressed VaR: the model allows to explore the effect of using stressed VaR as introduced in Basel III Accord. By default, this is not used, but in case the user wants to activate this feature, this is done through the variable <tt>useStressedVar</tt>. </li></ul>
 
-<b>Input</b>. The model parameters (see section ‘Parameters’ above) are specified in an xml file which is passed as an argument to the simulation file. Sample parameter files for <tt>TrendValueLSVarMultiAssetAbmSimulation.java</tt>can be found in the folder <a href="https://github.com/gitwitcho/var-agent-model/tree/master/agentsimulator/in/params/TrendValueLSVarAbm">var-agent-model/agentsimulator/in/params/TrendValueLSVarAbm/</a>.
+<b>Input</b>. The model parameters (see section ‘Parameters’ below) are specified in an xml file which is passed as an argument to the simulation file. Sample parameter files for <tt>TrendValueLSVarMultiAssetAbmSimulation.java</tt>can be found in the folder <a href="https://github.com/gitwitcho/var-agent-model/tree/master/agentsimulator/in/params/TrendValueLSVarAbm">var-agent-model/agentsimulator/in/params/TrendValueLSVarAbm/</a>.
 
 <b>Output</b>. The results of the simulations (time series of price, volume, orders, VaR,... for each run) are extracted to CSV files for their posterior analysis.
 
 Scripts in R have been created to analyse the simulation results. This analysis focuses on two main aspects: verification of the main stylised facts observed in stock markets (lack of return autocorrelation, volatility clustering, fat tails, etc.) to validate the model, and study of the market dynamics (price, value, agent performance, instability indicators, etc.). The R scripts can be found in the folder <a href="https://github.com/gitwitcho/var-agent-model/tree/master/agentsimulator/rscripts/sandbox%20(prod)">var-agent-model/agentsimulator/rscripts/sandbox (prod)/</a>.
+
+
+## Parameters
+
+<table style="width:100%">
+  <tr>
+    <th>Parameter</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td colspan="2"><em>General parameters</em></td>
+  </tr>
+  <tr>
+    <td><tt>nTicks</tt></td>
+    <td>Number of ticks of each run</td>
+  </tr>
+  <tr>
+    <td><tt>nRuns</tt></td>
+    <td>Number of runs of each experiment</td>
+  </tr>
+  <tr>
+    <td><tt>Seed</tt></td>
+    <td>Seed for random processes</td>
+  </tr>
+  <tr>
+    <td><tt>numTrends</tt></td>
+    <td>Number of trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>numFunds</tt></td>
+    <td>Number of value traders</td>
+  </tr>
+  <tr>
+    <td><tt>numLS</tt></td>
+    <td>Number of long-short traders</td>
+  </tr>
+  <tr>
+    <td colspan="2"><em>Parameters of price generator</em></td>
+  </tr>
+  <tr>
+    <td><tt>shift_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is the shift parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>amplitude_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is the amplitude parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>lag_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is the lag parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>lambda_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is the frequence parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>mu_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is the mean for the random term in price formation</td>
+  </tr>
+  <tr>
+    <td><tt>sigma_price</tt></td>
+    <td>The price process is the sum of a sinus or stepped function, plus a brownian motion. This is standard deviation for the random term in price formation</td>
+  </tr>
+  <tr>
+    <td><tt>price_0</tt></td>
+    <td>Initial price</td>
+  </tr>
+  <tr>
+    <td><tt>Liquidity</tt></td>
+    <td>Liquidity</td>
+  </tr>
+  <tr>
+    <td colspan="2"><em>Parameters of fundamental value generator</em></td>
+  </tr>
+  <tr>
+    <td><tt>shift_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is the shift parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>amplitude_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is the amplitude parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>lag_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is the lag parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>lambda_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is the frequence parameter for the sinus or the stepped function</td>
+  </tr>
+  <tr>
+    <td><tt>mu_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is the mean for the random term in value formation</td>
+  </tr>
+  <tr>
+    <td><tt>sigma_value</tt></td>
+    <td>The fundamental value process is the sum of a sinus or stepped function, plus a brownian motion. This is standard deviation for the random term in value formation</td>
+  </tr>
+  <tr>
+    <td colspan="2"><em>Parameters of trend traders</em></td>
+  </tr>
+  <tr>
+    <td><tt>maShortTicksMin,
+maShortTicksMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of short-term moving average used by trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>maLongTicksMin,
+maLongTicksMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of long-term moving average used by trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>bcTicksTrendMin,
+bcTicksTrendMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of exit channel used by trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>capFactorTrend</tt></td>
+    <td>Factor capital to adjust the orders of trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>volWindowStratTrend</tt></td>
+    <td>Window to calculate the standard deviation of prices</td>
+  </tr>
+  <tr>
+    <td><tt>probShortSellingTrend</tt></td>
+    <td>Proportion of trend traders that can sell short</td>
+  </tr>
+  <tr>
+    <td><tt>probVarTrend</tt></td>
+    <td>Proportion of trend traders that use a VaR model</td>
+  </tr>
+  <tr>
+    <td><tt>varLimitTrendMin,
+varLimitTrendMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the VaR limit of trend traders</td>
+  </tr>
+  <tr>
+    <td><tt>volWindowVarTrendMin,
+volWindowVarTrendMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of the standard deviation used by trend traders to calculate the VaR of their portfolio</td>
+  </tr>
+  <tr>
+    <td colspan="2"><em>Parameters of value traders</em></td>
+  </tr>
+  <tr>
+    <td><tt>entryThresholdMin,
+entryThresholdMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the entry thresholds of value traders</td>
+  </tr>
+  <tr>
+    <td><tt>exitThresholdMin,
+exitThresholdMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the exit thresholds of value traders</td>
+  </tr>
+  <tr>
+    <td><tt>valueOffset</tt></td>
+    <td>Boundaries of the uniform distribution that sets the difference between the fundamental value and the value perceived by each value trader</td>
+  </tr>
+  <tr>
+    <td><tt>bcTicksFundMin,
+bcTicksFundMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of exit channel used by value traders</td>
+  </tr>
+  <tr>
+    <td><tt>capFactorFund</tt></td>
+    <td>Factor capital to adjust the orders of value traders</td>
+  </tr>
+  <tr>
+    <td><tt>probShortSellingValue</tt></td>
+    <td>Proportion of value traders that can sell short</td>
+  </tr>
+  <tr>
+    <td><tt>probVarFund</tt></td>
+    <td>Proportion of value traders that use a VaR model</td>
+  </tr>
+  <tr>
+    <td><tt>varLimitFundMin,
+varLimitFundMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the VaR limit of value traders</td>
+  </tr>
+  <tr>
+    <td><tt>volWindowVarFundMin,
+volWindowVarFundMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of the standard deviation used by value traders to calculate the VaR of their portfolio</td>
+  </tr>
+  <tr>
+    <td colspan="2"><em>Parameters of long-short traders</em></td>
+  </tr>
+  <tr>
+    <td><tt>maSpreadShortTicksMin,
+maSpreadShortTicksMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of short-term moving average of spread used by long-short traders</td>
+  </tr>
+  <tr>
+    <td><tt>maSpreadLongTicksMin,
+maSpreadLongTicksMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of long-term moving average of spread used by long-short traders</td>
+  </tr>
+  <tr>
+    <td><tt>volWindowStratLS</tt></td>
+    <td>Window to calculate the standard deviation of prices</td>
+  </tr>
+  <tr>
+    <td><tt>entryDivergenceSigmasMin,
+entryDivergenceSigmasMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets how many sigmas the spreads needs to diverge from its historical mean to enter a position</td>
+  </tr>
+  <tr>
+    <td><tt>exitConvergenceSigmasMin,
+exitConvergenceSigmasMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets how many sigmas the spreads needs to diverge from its historical mean to consider that the spread has converged and close a position</td>
+  </tr>
+  <tr>
+    <td><tt>exitStopLossSigmasMin,
+exitStopLossSigmasMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets how many sigmas the spreads needs to diverge from its historical mean to fire a stop-loss order and close a position</td>
+  </tr>
+  <tr>
+    <td><tt>capFactorLS</tt></td>
+    <td>Factor capital to adjust the orders of long-short traders</td>
+  </tr>
+  <tr>
+    <td><tt>probVarLS</tt></td>
+    <td>Proportion of long-short traders that use a VaR model</td>
+  </tr>
+  <tr>
+    <td><tt>varLimitLSMin,
+varLimitLSMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the VaR limit of long-short traders</td>
+  </tr>
+  <tr>
+    <td><tt>volWindowVarLSMin,
+volWindowVarLSMax
+</tt></td>
+    <td>Boundaries of the uniform distribution that sets the window of the standard deviation used by long-short traders to calculate the VaR of their portfolio</td>
+  </tr>
+</table>
