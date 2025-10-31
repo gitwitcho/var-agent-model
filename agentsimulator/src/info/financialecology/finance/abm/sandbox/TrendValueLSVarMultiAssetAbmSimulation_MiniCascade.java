@@ -585,7 +585,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        for (int tr = 0; tr < numTrends; tr=tr+5) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int trendID = tr;
 		        	DoubleTimeSeries positions_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioVarReductions().getTsPosition("IBM");
 		        	
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();
 		        	orders_IBM.add(0, simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -593,7 +593,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        		orders_IBM.add(i,  simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 //		        	DoubleTimeSeries varSales_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsVarSales().get("IBM");   // Short orders due to VaR
 //		        	DoubleTimeSeries strategySales_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsStrategySales().get("IBM");   // Short orders due to the trading strategy
 		        		                
@@ -609,7 +609,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        for (int val = 0; val < numFunds; val=val+5) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int valueID = val;
 		        	DoubleTimeSeries positions_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioVarReductions().getTsPosition("IBM");
 		        	
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();
 		        	orders_IBM.add(0, simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -617,7 +617,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        		orders_IBM.add(i,  simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 //		        	DoubleTimeSeries varSales_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsVarSales().get("IBM");   // Short orders due to VaR
 //		        	DoubleTimeSeries strategySales_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsStrategySales().get("IBM");   // Short orders due to the trading strategy
 
@@ -633,7 +633,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        for (int ls = 0; ls < numLS/10; ls++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int lsID = ls;
 		        	DoubleTimeSeries positions_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioVarReductions().getTsPosition("IBM");
 
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();		        	
 		        	orders_IBM.add(0, simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -641,7 +641,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation_MiniCascade {
 		        		orders_IBM.add(i,  simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries selloffOrders_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 //		        	DoubleTimeSeries varSales_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsVarSales().get("IBM");   // Short orders due to VaR
 //		        	DoubleTimeSeries strategySales_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsStrategySales().get("IBM");   // Short orders due to the trading strategy
 

@@ -1,0 +1,330 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Barbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.utilities.test;
+
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
+import java.util.Locale;
+
+import info.financialecology.finance.utilities.CmdLineProcessor;
+import info.financialecology.finance.utilities.datagen.BrownianProcess;
+import info.financialecology.finance.utilities.datagen.BrownianProcess.Type;
+import info.financialecology.finance.utilities.datagen.OverlayDataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomDistDataGenerator;
+import info.financialecology.finance.utilities.datagen.RandomGeneratorPool;
+import info.financialecology.finance.utilities.datagen.RandomGeneratorPool.DistributionType;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeries;
+import info.financialecology.finance.utilities.datastruct.DoubleTimeSeriesList;
+import info.financialecology.finance.utilities.datastruct.FormattedDoubleArrayList;
+import info.financialecology.finance.utilities.datastruct.VersatileChart;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeries;
+import info.financialecology.finance.utilities.datastruct.VersatileTimeSeriesCollection;
+import info.financialecology.finance.utilities.test.TestBrownianProcessParams;
+
+import org.slf4j.LoggerFactory;
+
+import cern.colt.list.DoubleArrayList;
+import cern.jet.stat.Descriptive;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+
+
+/**
+ * A simple test battery for this class.
+ * 
+ * Possible validation tests for BrownianProcess: 
+ * 
+ *   - If 'sigma' = 0, then the obtained series should be a straight line with slope equal to 'mu'
+ *   - Visual inspection: The obtained series should move around a straight line with slope equal to 'mu'
+ *   - Visual inspection: The volatility at time t should be equal to sigma^2*t
+ *   - The increments of the Brownian process should follow a normal distribution with mean equal to 'mu' 
+ *     and standard deviation equal to 'sigma'    
+ *     
+ *
+ * @author Barbara Llacay, Gilbert Peffer
+ *
+ */
+public class TestBrownianProcess {
+
+    protected static final String TEST_ID = "BrownianProcess"; 
+
+    public static void main(String[] args) {
+
+        Logger root = (Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.ERROR); // TODO create a program argument to switch to trace
+        Logger logger = (Logger)LoggerFactory.getLogger("main");
+        
+
+        System.out.println("\n##########################");
+        System.out.println("#  TEST: " + TEST_ID);
+        System.out.println("##########################\n");
+
+        logger.trace("Setting up test for class '{}'\n", TEST_ID);
+       
+        int seedComp = 232;
+        
+        int numTicksSingle = 10000;
+        int numTicksMulti = 250;
+        int numTicksComp = 100000;
+        
+        int numRuns = 50;
+        
+        int maxLag = 10;        // produce ACF values between 0 and maxLag
+
+        double mu = 0.0;
+        double sigma_abp = 10 / Math.sqrt(250);     // daily volatility for artihmetic Brownian process
+        double sigma_gbp = 0.05 / Math.sqrt(250);   // daily volatility for geometric Brownian process
+        double sigma_comp = 0.07 / Math.sqrt(250);    // volatility to compare arithmetic and geometric Brownian process  
+        double initValue = 100;
+        
+        String baseName = "VALUE";
+
+        // Number formatter for the output
+        DecimalFormat df = new DecimalFormat("0.00000", new DecimalFormatSymbols(Locale.UK));
+        DoubleTimeSeries.setFormatter(df);
+        FormattedDoubleArrayList.setFormatter(df);
+
+        // Data storage and formatting
+        VersatileTimeSeries.StaticInternalParams.setTimePeriodFormat("tick");
+        VersatileTimeSeries.StaticInternalParams.setTimePeriod(VersatileTimeSeries.Period.DAY);
+        VersatileTimeSeries.StaticInternalParams.setOutputHead(25);
+        VersatileTimeSeries.StaticInternalParams.setOutputTail(3);
+        
+
+        /**
+         * Setup
+         */
+        RandomGeneratorPool.configureGeneratorPool(546);
+        
+        
+        /**
+         * RUN 1 - Single path of the arithmetic Brownian process
+         */
+        BrownianProcess gen = new BrownianProcess(baseName + "_abp", Type.ARITHMETIC, initValue, mu, sigma_abp);
+
+        DoubleTimeSeries dts_single_abp = new DoubleTimeSeries("single ABP");
+        dts_single_abp.add(initValue);
+        
+        for (int i = 1; i < numTicksSingle; i++)
+            dts_single_abp.add(gen.nextDouble());
+        
+        // Compute autocorrelations (standard and absolute) on first differences x_t - x_t-1
+        DoubleArrayList abp_autocorr = dts_single_abp.getFirstDiff().acf(maxLag);
+        DoubleArrayList abp_autocorr_abs = dts_single_abp.getFirstDiff().acfAbs(maxLag);
+
+        
+        /**
+         * RUN 2 - Multiple paths of the arithmetic Brownian process
+         */
+        DoubleTimeSeriesList dtsl_multi_abp = new DoubleTimeSeriesList();
+        
+        for (int r = 0; r < numRuns; r++) {
+            gen = new BrownianProcess(baseName + "_abp_" + r, Type.ARITHMETIC, initValue, mu, sigma_abp);
+
+            DoubleTimeSeries dts_multi_abp = new DoubleTimeSeries("abp_" + r);
+            dts_multi_abp.add(initValue);
+            
+            for (int i = 1; i < numTicksMulti; i++)
+                dts_multi_abp.add(gen.nextDouble());
+
+            dtsl_multi_abp.add(dts_multi_abp);
+        }
+        
+        // Compute mean and variances at different times
+        DoubleTimeSeries tsMeanValuesAbp = new DoubleTimeSeries("ABP - mean(t)");
+        DoubleTimeSeries tsVolValuesAbp = new DoubleTimeSeries("ABP - vol(t)");
+        DoubleArrayList sliceAbp;
+        
+        for (int t = 0; t < numTicksMulti; t++) {
+            
+            sliceAbp = dtsl_multi_abp.slice(t);
+            
+            tsMeanValuesAbp.add(Descriptive.mean(sliceAbp));
+            tsVolValuesAbp.add(Math.sqrt(Descriptive.variance(sliceAbp.size(), Descriptive.sum(sliceAbp), Descriptive.sumOfSquares(sliceAbp))));
+        }
+        
+        // Compute autocorrelations (standard and absolute) on first differences x_t - x_t-1
+        DoubleTimeSeriesList abps_autocorr = new DoubleTimeSeriesList();
+        DoubleTimeSeriesList abps_autocorr_abs = new DoubleTimeSeriesList();
+        
+        for (int r = 0; r < numRuns; r++) {
+            abps_autocorr.add(new DoubleTimeSeries("acf_" + r, dtsl_multi_abp.get(r).getFirstDiff().acf(maxLag)));
+            abps_autocorr_abs.add(new DoubleTimeSeries("abs(acf_" + r + ")", dtsl_multi_abp.get(r).getFirstDiff().acfAbs(maxLag)));
+        }
+
+        
+        /**
+         * RUN 3 - Single path of the geometric Brownian process
+         */
+        gen = new BrownianProcess(baseName + "_gbp", Type.GEOMETRIC, initValue, mu, sigma_gbp);
+
+        DoubleTimeSeries dts_single_gbp = new DoubleTimeSeries("single GBP");
+        dts_single_gbp.add(initValue);
+        
+        for (int i = 1; i < numTicksSingle; i++)
+            dts_single_gbp.add(gen.nextDouble());
+        
+        // Compute autocorrelations (standard and absolute) on first differences x_t - x_t-1
+        DoubleArrayList gbp_autocorr = dts_single_gbp.getFirstDiff().acf(maxLag);
+        DoubleArrayList gbp_autocorr_abs = dts_single_gbp.getFirstDiff().acfAbs(maxLag);
+
+        
+        /**
+         * RUN 4 - Multiple paths of the geometric Brownian process
+         */
+        DoubleTimeSeriesList dtsl_multi_gbp = new DoubleTimeSeriesList();
+        
+        for (int r = 0; r < numRuns; r++) {
+            gen = new BrownianProcess(baseName + "_gbp_" + r, Type.GEOMETRIC, initValue, mu, sigma_gbp);
+
+            DoubleTimeSeries dts_multi_gbp = new DoubleTimeSeries("gbp_" + r);
+            dts_multi_gbp.add(initValue);
+            
+            for (int i = 1; i < numTicksMulti; i++)
+                dts_multi_gbp.add(gen.nextDouble());
+
+            dtsl_multi_gbp.add(dts_multi_gbp);
+        }
+        
+        // Compute mean and variances at different times
+        DoubleTimeSeries tsMeanValuesGbp = new DoubleTimeSeries("GBP - mean(t)");
+        DoubleTimeSeries tsVolValuesGbp = new DoubleTimeSeries("GBP - vol(t)");
+        DoubleArrayList sliceGbp;
+        
+        for (int t = 0; t < numTicksMulti; t++) {
+            
+            sliceGbp = dtsl_multi_gbp.slice(t);
+            
+            tsMeanValuesGbp.add(Descriptive.mean(sliceGbp));
+            tsVolValuesGbp.add(Math.sqrt(Descriptive.variance(sliceGbp.size(), Descriptive.sum(sliceGbp), Descriptive.sumOfSquares(sliceGbp))));
+        }
+        
+        // Compute autocorrelations (standard and absolute) on first differences x_t - x_t-1
+        DoubleTimeSeriesList gbps_autocorr = new DoubleTimeSeriesList();
+        DoubleTimeSeriesList gbps_autocorr_abs = new DoubleTimeSeriesList();
+        
+        for (int r = 0; r < numRuns; r++) {
+            gbps_autocorr.add(new DoubleTimeSeries("acf_" + r, dtsl_multi_gbp.get(r).getFirstDiff().acf(maxLag)));
+            gbps_autocorr_abs.add(new DoubleTimeSeries("abs(acf_" + r + ")", dtsl_multi_gbp.get(r).getFirstDiff().acfAbs(maxLag)));
+        }
+
+        
+        /**
+         * RUN 5 - Comparing arithmetic and geometric Brownian processes
+         */
+        RandomGeneratorPool.configureGeneratorPool(seedComp);
+        BrownianProcess gen_abp = new BrownianProcess(baseName + "_abp_comp", Type.ARITHMETIC, initValue, mu, initValue * sigma_comp);
+        RandomGeneratorPool.configureGeneratorPool(seedComp);
+        BrownianProcess gen_gbp = new BrownianProcess(baseName + "_gbp_comp", Type.GEOMETRIC, initValue, mu, sigma_comp);
+
+        DoubleTimeSeries dts_comp_abp = new DoubleTimeSeries("compare ABP");
+        DoubleTimeSeries dts_comp_gbp = new DoubleTimeSeries("compare GBP");
+        
+        dts_comp_abp.add(initValue);
+        dts_comp_gbp.add(initValue);
+        
+        for (int i = 1; i < numTicksComp; i++) {
+            dts_comp_abp.add(gen_abp.nextDouble());
+            dts_comp_gbp.add(gen_gbp.nextDouble());
+        }
+        
+
+        /**
+         * OUTPUT - Text
+         */
+        System.out.println("RUN 1 - Single path of the arithmetic Brownian process");
+        System.out.println("======================================================\n");
+        System.out.println(VersatileTimeSeries.printDecorated(dts_single_abp));
+        
+        System.out.println("\nRUN 2 - Multiple paths of the arithmetic Brownian process");
+        System.out.println("=========================================================\n");
+        System.out.println(VersatileTimeSeriesCollection.printDecorated(dtsl_multi_abp));
+        
+        System.out.println("\nRUN 3 - Single path of the geometric Brownian process");
+        System.out.println("=========================================================\n");
+        System.out.println(VersatileTimeSeries.printDecorated(dts_single_gbp));
+        
+        System.out.println("\nRUN 4 - Multiple paths of the geometric Brownian process");
+        System.out.println("=========================================================\n");
+        System.out.println(VersatileTimeSeriesCollection.printDecorated(dtsl_multi_gbp));
+        
+        System.out.println("\nRUN 5 - Comparing arithmetic and geometric Brownian processes");
+        System.out.println("=========================================================\n");
+        System.out.println(VersatileTimeSeries.printDecorated(dts_comp_abp));
+        System.out.println(VersatileTimeSeries.printDecorated(dts_comp_gbp));
+        
+        
+        /**
+         * OUTPUT - Graphs
+         */
+        VersatileChart charts = new VersatileChart();
+        charts.getInternalParms().autoRange = true;
+        charts.getInternalParms().autoRangePadding = 0;
+        charts.getInternalParms().ticks = true;
+
+        // RUN 1 - Single path of the arithmetic Brownian process
+        charts.draw(new VersatileTimeSeries("single ABP", dts_single_abp));
+        charts.draw(new VersatileTimeSeries("ABP - acf", abp_autocorr));
+        charts.draw(new VersatileTimeSeries("ABP - abs(acf)", abp_autocorr_abs));
+
+        // RUN 2 - Multiple paths of the arithmetic Brownian process
+        charts.draw(new VersatileTimeSeries(tsMeanValuesAbp.getId(), tsMeanValuesAbp));
+        charts.draw(new VersatileTimeSeries(tsVolValuesAbp.getId(), tsVolValuesAbp));
+        
+        charts.getInternalParms().legend = false;
+        
+        charts.getInternalParms().yLabel = "ABP - Value";
+        charts.draw(new VersatileTimeSeriesCollection("multi ABP", dtsl_multi_abp));
+        
+        charts.getInternalParms().yLabel = "ABP - acf";
+        charts.draw(new VersatileTimeSeriesCollection("ABP - acf", abps_autocorr));
+        
+        charts.getInternalParms().yLabel = "ABP - abs(acf)";
+        charts.draw(new VersatileTimeSeriesCollection("ABP - abs(acf)", abps_autocorr_abs));
+        
+        // RUN 3 - Single path of the geometric Brownian process
+        charts.getInternalParms().legend = true;
+        charts.getInternalParms().yLabel = "Y";
+
+        charts.draw(new VersatileTimeSeries("single GBP", dts_single_gbp));
+        charts.draw(new VersatileTimeSeries("GBP - acf", gbp_autocorr));
+        charts.draw(new VersatileTimeSeries("GBP - abs(acf)", gbp_autocorr_abs));
+        
+        // RUN 4 - Multiple paths of the geometric Brownian process
+        charts.draw(new VersatileTimeSeries(tsMeanValuesGbp.getId(), tsMeanValuesGbp));
+        charts.draw(new VersatileTimeSeries(tsVolValuesGbp.getId(), tsVolValuesGbp));
+        
+        charts.getInternalParms().legend = false;
+        
+        charts.getInternalParms().yLabel = "GBP - Value";
+        charts.draw(new VersatileTimeSeriesCollection("multi GBP", dtsl_multi_gbp));
+        
+        charts.getInternalParms().yLabel = "GBP - acf";
+        charts.draw(new VersatileTimeSeriesCollection("GBP - acf", gbps_autocorr));
+        
+        charts.getInternalParms().yLabel = "GBP - abs(acf)";
+        charts.draw(new VersatileTimeSeriesCollection("GBP - abs(acf)", gbps_autocorr_abs));
+        
+        // RUN 5 - Comparing arithmetic and geometric Brownian processes
+        charts.getInternalParms().legend = true;
+        charts.getInternalParms().yLabel = "Y";
+
+        charts.draw(new VersatileTimeSeries("ABP", dts_comp_abp), new VersatileTimeSeries("GBP", dts_comp_gbp));
+
+    }
+    
+}

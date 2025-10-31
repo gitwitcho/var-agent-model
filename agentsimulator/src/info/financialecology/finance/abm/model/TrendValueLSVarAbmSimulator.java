@@ -1022,7 +1022,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : valueTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader fund = valueTraders.get(key);
-        	DoubleTimeSeries fundReducedPos = fund.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries fundReducedPos = fund.getPortfolioVarReductions().getTsPosition(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  fundReducedPos.get(i));
@@ -1069,7 +1069,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : trendTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader trend = trendTraders.get(key);
-        	DoubleTimeSeries trendReducedPos = trend.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries trendReducedPos = trend.getPortfolioVarReductions().getTsPosition(secId);
         	       	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  trendReducedPos.get(i));
@@ -1116,7 +1116,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : LSTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader ls = LSTraders.get(key);
-        	DoubleTimeSeries lsReducedPos = ls.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries lsReducedPos = ls.getPortfolioVarReductions().getTsPosition(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  lsReducedPos.get(i));
@@ -1163,7 +1163,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : valueTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader fund = valueTraders.get(key);
-        	DoubleTimeSeries fundReducedPos = fund.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries fundReducedPos = fund.getPortfolioVarReductions().getTsPosition(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(fundReducedPos.get(i)));
@@ -1210,7 +1210,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : trendTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader trend = trendTraders.get(key);
-        	DoubleTimeSeries trendReducedPos = trend.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries trendReducedPos = trend.getPortfolioVarReductions().getTsPosition(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(trendReducedPos.get(i)));
@@ -1257,7 +1257,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : LSTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader ls = LSTraders.get(key);
-        	DoubleTimeSeries lsReducedPos = ls.getPortfolioReductions().getTsPosition(secId);
+        	DoubleTimeSeries lsReducedPos = ls.getPortfolioVarReductions().getTsPosition(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(lsReducedPos.get(i)));
@@ -1304,7 +1304,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : valueTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader fund = valueTraders.get(key);
-        	DoubleTimeSeries fundSelloffPos = fund.getTsSelloff().get(secId);
+        	DoubleTimeSeries fundSelloffPos = fund.getTsVarSelloff().get(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  fundSelloffPos.get(i));
@@ -1351,7 +1351,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : trendTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader trend = trendTraders.get(key);
-        	DoubleTimeSeries trendSelloffPos = trend.getTsSelloff().get(secId);
+        	DoubleTimeSeries trendSelloffPos = trend.getTsVarSelloff().get(secId);
         	       	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  trendSelloffPos.get(i));
@@ -1398,7 +1398,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : LSTraders.keySet()) {
         	DoubleTimeSeries orders = new DoubleTimeSeries();
         	Trader ls = LSTraders.get(key);
-        	DoubleTimeSeries lsSelloffPos = ls.getTsSelloff().get(secId);
+        	DoubleTimeSeries lsSelloffPos = ls.getTsVarSelloff().get(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		orders.add(i,  lsSelloffPos.get(i));
@@ -1445,7 +1445,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : valueTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader fund = valueTraders.get(key);
-        	DoubleTimeSeries fundSelloffPos = fund.getTsSelloff().get(secId);
+        	DoubleTimeSeries fundSelloffPos = fund.getTsVarSelloff().get(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(fundSelloffPos.get(i)));
@@ -1492,7 +1492,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : trendTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader trend = trendTraders.get(key);
-        	DoubleTimeSeries trendSelloffPos = trend.getTsSelloff().get(secId);
+        	DoubleTimeSeries trendSelloffPos = trend.getTsVarSelloff().get(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(trendSelloffPos.get(i)));
@@ -1539,7 +1539,7 @@ public class TrendValueLSVarAbmSimulator extends AbstractSimulator {
         for (String key : LSTraders.keySet()) {
         	DoubleTimeSeries absOrders = new DoubleTimeSeries();
         	Trader ls = LSTraders.get(key);
-        	DoubleTimeSeries lsSelloffPos = ls.getTsSelloff().get(secId);
+        	DoubleTimeSeries lsSelloffPos = ls.getTsVarSelloff().get(secId);
         	
         	for (int i = 0; i < nTicks; i++) {
         		absOrders.add(i,  Math.abs(lsSelloffPos.get(i)));

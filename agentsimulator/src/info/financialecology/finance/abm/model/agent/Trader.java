@@ -40,18 +40,27 @@ public class Trader extends Agent {
 	private UseVar useVar;                  // specifies if the agent uses a VaR system
 	private double varLimit;                // VaR threshold (in dollar value)
 	private UseStressedVar useStressedVar;             // specifies if the agent uses stressed VaR
+	private UseStressedEs useStressedEs;               // specifies if the agent uses stressed ES
 	private VariabilityVarLimit variabilityVarLimit;   // specifies if the VaR limit is constant or variable
+	private UseEs useEs;                   // specifies if the agent uses an ES system
+	private double esLimit;                // ES threshold (in dollar value)
 	
 	private State state;                    // specifies if the agent has failed (wealth < 0) 
 	private int failureTick;				// time step where the agent has failed (-1 if the agent does not fail)
 	
-	private int volWindowVar;                       // volatility window used to calculate VaR
+	private int volWindow;                          // volatility window used to calculate VaR and ES
+
 	private DoubleTimeSeries tsVar_preTrade;        // time series of VaR (before any trade is done) - used for plots
 	private DoubleTimeSeries tsVar_postTrade;       // time series of VaR (after the trade is done) - used for plots
 	private DoubleTimeSeries tsStressedVar_postTrade;    // time series of stressed VaR (after the trade is done) - used for plots
-	private TradingPortfolio portfolioReductions;   // the trading portfolio with the reductions in positions made to keep VaR below limit
-	
-	private HashMap<String, DoubleTimeSeries> tsSelloff;         // time series of sell-off orders due to VaR - used for plots
+	private TradingPortfolio portfolioVarReductions;     // the trading portfolio with the reductions in positions made to keep VaR below limit
+	private HashMap<String, DoubleTimeSeries> tsVarSelloff;         // time series of sell-off orders due to VaR - used for plots
+
+	private DoubleTimeSeries tsEs_preTrade;        // time series of ES (before any trade is done) - used for plots
+	private DoubleTimeSeries tsEs_postTrade;       // time series of ES (after the trade is done) - used for plots
+	private DoubleTimeSeries tsStressedEs_postTrade;     // time series of stressed ES (after the trade is done) - used for plots
+	private TradingPortfolio portfolioEsReductions;      // the trading portfolio with the reductions in positions made to keep ES below limit
+	private HashMap<String, DoubleTimeSeries> tsEsSelloff;         // time series of sell-off orders due to ES - used for plots
 
     private HashMap<String, Double> maMeanReturns_previous_tick;        // given: mean of log-returns at t-1 (used in the incremental calculation of variance)
     private HashMap<String, HashMap<String, Double>> maCovarianceReturns_previous_tick;    // given: covariances of log-returns at t-1 (used in the incremental calculation of covariances)
@@ -60,7 +69,7 @@ public class Trader extends Agent {
     private HashMap<String, Boolean> firstMACalculation;                // the first calculation needs to use the full MA and variance methods, after that incremental
     
     private HashMap<String, HashMap<String, Double>> maxCovariances;    // covariances of log-returns at the time step when the average covariance was the highest 
-    																	// since the start of the simulation (used in the calculation of stressed VaR)
+    																	// since the start of the simulation (used in the calculation of stressed VaR and ES)
     
 	private DoubleTimeSeries tsVolatilityIndex;       // average of volatility over all assets (used to update the VaR limit)
 	private double volatilityIndex_MA_t = 0;          // historical mean of volatility index over a window
@@ -75,12 +84,22 @@ public class Trader extends Agent {
         TRUE,                 // The agent uses VaR
         FALSE;                // The agent does not use VaR   
     }
-	
+
+	public enum UseEs {      // Specifies if the agent uses an expected shortfall system
+        TRUE,                 // The agent uses ES
+        FALSE;                // The agent does not use ES   
+    }
+
     public enum UseStressedVar {      // Specifies if the agent uses stressed VaR
         TRUE,                         // The agent uses stressed VaR
         FALSE;                        // The agent does not use stressed VaR
     }
-	
+
+    public enum UseStressedEs {       // Specifies if the agent uses stressed ES
+        TRUE,                         // The agent uses stressed ES
+        FALSE;                        // The agent does not use stressed ES
+    }
+
     public enum VariabilityVarLimit {      // Specifies if the varLimit is constant or varies
         CONSTANT,                          // the varLimit is constant
         PROCYCLICAL,                       // the capFactor is variable and decreases with market instability
@@ -114,10 +133,15 @@ public class Trader extends Agent {
 		this.tsVar_preTrade = new DoubleTimeSeries();
 		this.tsVar_postTrade = new DoubleTimeSeries();
 		this.tsStressedVar_postTrade = new DoubleTimeSeries();
-		this.portfolioReductions = new TradingPortfolio();
+		this.portfolioVarReductions = new TradingPortfolio();
+		this.tsVarSelloff =  new HashMap<String, DoubleTimeSeries>();
 
-		this.tsSelloff =  new HashMap<String, DoubleTimeSeries>();
-		
+		this.tsEs_preTrade = new DoubleTimeSeries();
+		this.tsEs_postTrade = new DoubleTimeSeries();
+		this.tsStressedEs_postTrade = new DoubleTimeSeries();
+		this.portfolioEsReductions = new TradingPortfolio();
+		this.tsEsSelloff =  new HashMap<String, DoubleTimeSeries>();
+
 		this.maMeanReturns_previous_tick = new HashMap<String, Double>();
 		this.maCovarianceReturns_previous_tick = new HashMap<String, HashMap<String, Double>>();
 		this.maMeanReturns_current_tick = new HashMap<String, Double>();
@@ -157,8 +181,11 @@ public class Trader extends Agent {
         
         for (String secId_1 : secIds) {
             portfolio.newSecurity(secId_1);
-        	portfolioReductions.newSecurity(secId_1);
-        	tsSelloff.put(secId_1, new DoubleTimeSeries());
+            
+        	portfolioVarReductions.newSecurity(secId_1);
+        	tsVarSelloff.put(secId_1, new DoubleTimeSeries());
+        	portfolioEsReductions.newSecurity(secId_1);
+        	tsEsSelloff.put(secId_1, new DoubleTimeSeries());
         	
         	maMeanReturns_previous_tick.put(secId_1, 0.0);
         	maMeanReturns_current_tick.put(secId_1, 0.0);        	
@@ -169,9 +196,9 @@ public class Trader extends Agent {
     /**
      * Set the volatility window
      */
-    public void setVolWindowVar(int volWindow) {    	
+    public void setVolWindow(int volWindow) {    	
 
-        this.volWindowVar = volWindow;
+        this.volWindow = volWindow;
     }
     
     /**
@@ -184,19 +211,44 @@ public class Trader extends Agent {
     }
     
     /**
+     * Set the ES limit
+     */
+    public void setEsLimit(double esLimit) {    	
+
+        this.esLimit = esLimit;
+        //this.tsEsLimit.add(0, esLimit);
+    }
+
+    /**
      * Specify if the trader uses VaR
      */
     public void setUseVar(UseVar useVar) {    	
 
         this.useVar = useVar;
     }
-    
+
+    /**
+     * Specify if the trader uses ES
+     */
+    public void setUseEs(UseEs useEs) {    	
+
+        this.useEs = useEs;
+    }
+
     /**
      * Specify if the trader uses stressed VaR
      */
     public void setUseStressedVar(UseStressedVar useStressedVar) {    	
 
         this.useStressedVar = useStressedVar;
+    }
+    
+    /**
+     * Specify if the trader uses stressed ES
+     */
+    public void setUseStressedEs(UseStressedEs useStressedEs) {    	
+
+        this.useStressedEs = useStressedEs;
     }
     
     /**
@@ -213,7 +265,14 @@ public class Trader extends Agent {
     public double getVarLimit() { 
     	return varLimit;
     }
-    
+
+    /**
+     * Get the ES limit
+     */
+    public double getEsLimit() { 
+    	return esLimit;
+    }
+
     /**
      * Get the time series of variable VaR limit
      */
@@ -228,7 +287,14 @@ public class Trader extends Agent {
     public DoubleTimeSeries getTsVarPreTrade() { 
     	return tsVar_preTrade;
     }
-    
+
+    /**
+     * Get the time series of ES (calculated before any trade is done)
+     */
+    public DoubleTimeSeries getTsEsPreTrade() { 
+    	return tsEs_preTrade;
+    }
+
     /**
      * Get the time series of VaR (calculated after the trade is done)
      */
@@ -237,6 +303,13 @@ public class Trader extends Agent {
     }
     
     /**
+     * Get the time series of ES (calculated after the trade is done)
+     */
+    public DoubleTimeSeries getTsEsPostTrade() { 
+    	return tsEs_postTrade;
+    }
+
+    /**
      * Get the time series of stressed VaR (calculated after the trade is done)
      */
     public DoubleTimeSeries getTsStressedVarPostTrade() { 
@@ -244,12 +317,25 @@ public class Trader extends Agent {
     }
     
     /**
+     * Get the time series of stressed ES (calculated after the trade is done)
+     */
+    public DoubleTimeSeries getTsStressedEsPostTrade() { 
+    	return tsStressedEs_postTrade;
+    }
+    
+    /**
      * Get the time series of sell-off orders due to VaR
      */
-    public HashMap<String, DoubleTimeSeries> getTsSelloff() { 
-    	return tsSelloff;
+    public HashMap<String, DoubleTimeSeries> getTsVarSelloff() { 
+    	return tsVarSelloff;
     }
         
+    /**
+     * Get the time series of sell-off orders due to ES
+     */
+    public HashMap<String, DoubleTimeSeries> getTsEsSelloff() { 
+    	return tsEsSelloff;
+    }
     
     /**
      * Get all trading strategies for this trader
@@ -271,9 +357,15 @@ public class Trader extends Agent {
 		if (useVar == UseVar.TRUE) {
 			this.updateCovariances();     // Update the covariances with current prices to calculate the VaR
 			this.updateMaxCovariances();  // Update the maximum covariances to calculate the stressed VaR
-			tsVar_preTrade.add(currentTick, portfolio.preTradeValueAtRisk(market));  // Value at risk with current price, before any trade is done (-> using positions at t-1, prices at t)
+			tsVar_preTrade.add(currentTick, portfolio.preTradeValueAtRisk(market, market.getConfLevelVar()));  // Value at risk with current price, before any trade is done (-> using positions at t-1, prices at t)
 		}
 		
+		if (useEs == UseEs.TRUE) {
+			this.updateCovariances();     // Update the covariances with current prices to calculate the ES
+			this.updateMaxCovariances();  // Update the maximum covariances to calculate the stressed ES
+			tsEs_preTrade.add(currentTick, portfolio.preTradeShortfallParametricNormal(market, market.getConfLevelEs()));  // ES with current price, before any trade is done (-> using positions at t-1, prices at t)
+		}
+
 		ArrayList<Order> completeOrders = new ArrayList<Order>();  // Store the orders in all the assets
 
 		// Calculate the desired positions (using the trading strategy)		
@@ -287,10 +379,15 @@ public class Trader extends Agent {
 		}
 
 		for (String secId : secIds) {   // Set a default (zero) value for the portfolio reductions, to avoid exceptions if no VaR-reduction is done 
-    		portfolioReductions.getTsPosition(secId).add(currentTick, 0.0);
-    		tsSelloff.get(secId).add(currentTick, 0.0);
+    		portfolioVarReductions.getTsPosition(secId).add(currentTick, 0.0);
+    		tsVarSelloff.get(secId).add(currentTick, 0.0);
     		tsVar_postTrade.add(currentTick, 0.0);
     		tsStressedVar_postTrade.add(currentTick, 0.0);
+
+    		portfolioEsReductions.getTsPosition(secId).add(currentTick, 0.0);
+    		tsEsSelloff.get(secId).add(currentTick, 0.0);
+    		tsEs_postTrade.add(currentTick, 0.0);
+    		tsStressedEs_postTrade.add(currentTick, 0.0);
 		}
 
 		
@@ -302,11 +399,11 @@ public class Trader extends Agent {
 
 			// Calculate the total VaR (= normal VaR + stressed VaR)
 
-			double postTradeVar = portfolio.valueAtRisk(market);  // Value at risk of current portfolio (-> using positions at t, prices at t)
+			double postTradeVar = portfolio.valueAtRisk(market, market.getConfLevelVar());  // Value at risk of current portfolio (-> using positions at t, prices at t)
 			
 			double stressedVar = 0;			
 			if (useStressedVar == UseStressedVar.TRUE)
-				stressedVar = portfolio.stressedValueAtRisk(market);  // Stressed VaR of current portfolio
+				stressedVar = portfolio.stressedValueAtRisk(market, market.getConfLevelVar());  // Stressed VaR of current portfolio
 			
 			double totalVar = postTradeVar + stressedVar;
 			tsVar_postTrade.add(currentTick, postTradeVar);
@@ -315,12 +412,12 @@ public class Trader extends Agent {
 			// Check if VaR level [using the just-calculated positions] is below the limit
 		
 			if (totalVar > tsVarLimit.get(currentTick)) {
-				ArrayList<Order> reductionOrders = varRebalance(totalVar, tsVarLimit.get(currentTick));
-				for (Order order : reductionOrders) {
+				ArrayList<Order> varReductionOrders = varRebalance(totalVar, tsVarLimit.get(currentTick));
+				for (Order order : varReductionOrders) {
 				
 					// Calculate if the agent is forced to sell off due to VaR (used for plots)
 					String shareId = order.getSecId();
-					double reduction_order = order.getOrder();
+					double var_reduction_order = order.getOrder();
 					double desired_order;
 				
 					if (currentTick > 0)   // 'recover' the order desired according to the trading strategy 				
@@ -328,17 +425,68 @@ public class Trader extends Agent {
 					else
 						desired_order = this.getPortfolio().getTsPosition(shareId).get(currentTick);
 
-					if (Math.abs(reduction_order) > Math.abs(desired_order)) {  // The agent would like to buy (sell) and is forced to sell (buy) due to VaR
-					    tsSelloff.get(shareId).add(currentTick, reduction_order + desired_order);
+					if (Math.abs(var_reduction_order) > Math.abs(desired_order)) {  // The agent would like to buy (sell) and is forced to sell (buy) due to VaR
+					    tsVarSelloff.get(shareId).add(currentTick, var_reduction_order + desired_order);
 			    	}
 				
 					// Add the reduction orders to the complete array of orders
 					completeOrders.add(order);					
 					portfolio.addToPositions(order);   // Update positions in the trader's portfolio				
-					portfolioReductions.addToPositions(order);
+					portfolioVarReductions.addToPositions(order);
 				}
 			}
 		}
+		
+		if (useEs == UseEs.TRUE) {
+
+			// Calculate the total ES (= normal ES + stressed ES)
+
+			double postTradeEs = portfolio.expectedShortfallParametricNormal(market, market.getConfLevelEs());
+			
+//			if (currentTick == 3000) {
+//				System.out.println("agent " + this.label + "ES = " + portfolio.expectedShortfallParametricNormal(market, market.getConfLevelEs()) + " / stressed ES = " + portfolio.stressedExpectedShortfall(market, market.getConfLevelEs()) + "\n");
+//			}
+						
+			double stressedEs = 0;
+			if (useStressedEs == UseStressedEs.TRUE)
+				stressedEs = portfolio.stressedExpectedShortfall(market, market.getConfLevelEs());  // Stressed ES of current portfolio
+			
+			//double totalEs = postTradeEs + stressedEs;  // This implementation copies Basel II.5 with stressed VaR
+			double totalEs = stressedEs;
+			if (postTradeEs != 0)
+				totalEs = postTradeEs * Math.max(1, stressedEs/postTradeEs);  // This implementation follows the FRTB
+			
+			tsEs_postTrade.add(currentTick, postTradeEs);
+			tsStressedEs_postTrade.add(currentTick, stressedEs);
+			
+			// Check if ES level [using the just-calculated positions] is below the limit
+		
+			if (totalEs > esLimit) {
+				ArrayList<Order> esReductionOrders = esRebalance(totalEs, esLimit);
+				for (Order order : esReductionOrders) {
+				
+					// Calculate if the agent is forced to sell off due to ES (used for plots)
+					String shareId = order.getSecId();
+					double es_reduction_order = order.getOrder();
+					double desired_order;
+				
+					if (currentTick > 0)   // 'recover' the order desired according to the trading strategy 				
+						desired_order = this.getPortfolio().getTsPosition(shareId).get(currentTick) - this.getPortfolio().getTsPosition(shareId).get(currentTick - 1);
+					else
+						desired_order = this.getPortfolio().getTsPosition(shareId).get(currentTick);
+
+					if (Math.abs(es_reduction_order) > Math.abs(desired_order)) {  // The agent would like to buy (sell) and is forced to sell (buy) due to ES
+					    tsEsSelloff.get(shareId).add(currentTick, es_reduction_order + desired_order);
+			    	}
+				
+					// Add the reduction orders to the complete array of orders
+					completeOrders.add(order);					
+					portfolio.addToPositions(order);   // Update positions in the trader's portfolio				
+					portfolioEsReductions.addToPositions(order);
+				}
+			}
+		}
+		
 		
 		// Send all orders to the market maker
 		for (Order order : completeOrders) {
@@ -373,6 +521,18 @@ public class Trader extends Agent {
 		}
 	    		
 		logger.trace("t = {} | {}", market.currentTick(), this.toString());   // TODO information not meaningful
+		
+		//-------------
+		
+//		if (currentTick == 3999 && this.portfolio.getTsPosition("IBM").get(currentTick) >0) {
+//			double aux = this.portfolio.getTsPosition("IBM").get(currentTick);
+//			//double tradeES = portfolio.expectedShortfall(market);
+//			//double tradeES = portfolio.expectedShortfall(market, 0.99, 200);
+//			double tradeES = portfolio.expectedShortfallParametricTStudent(market, 0.99);
+//			double tradeES_N = portfolio.expectedShortfallParametricNormal(market, 0.99);
+//			//double tradeES = portfolio.expectedShortfallParametric(market, 0.99);
+//			System.out.println("position: " + this.portfolio.getTsPosition("IBM").get(currentTick) + "  ES_t: " + tradeES + "  ES_N: " + tradeES_N + "\n");
+//		}
 	}
 
 	
@@ -384,25 +544,25 @@ public class Trader extends Agent {
 		ArrayList<String> secIds = market.getMarketMaker().getSecIds();
 		int currentTick = (int) market.currentTick(); 
 		
-		if (currentTick >= this.volWindowVar) {
+		if (currentTick >= this.volWindow) {
 			for (String secId_1 : secIds) {
 				
 				if (this.firstMACalculation.get(secId_1)) {
-					this.maMeanReturns_current_tick.put(secId_1, StatsTimeSeries.fullMA(market.getLogReturns(secId_1), this.volWindowVar));
+					this.maMeanReturns_current_tick.put(secId_1, StatsTimeSeries.fullMA(market.getLogReturns(secId_1), this.volWindow));
 					
 					for (String secId_2 : secIds) {
 						this.maCovarianceReturns_current_tick.get(secId_1).put(secId_2, StatsTimeSeries.covariance(market.getLogReturns(secId_1), 
-								market.getLogReturns(secId_2), this.volWindowVar));
+								market.getLogReturns(secId_2), this.volWindow));
 					}
 					this.firstMACalculation.put(secId_1, false);
 				}
 				else {
-					this.maMeanReturns_current_tick.put(secId_1, StatsTimeSeries.incrementalMA(market.getLogReturns(secId_1), this.volWindowVar, 
+					this.maMeanReturns_current_tick.put(secId_1, StatsTimeSeries.incrementalMA(market.getLogReturns(secId_1), this.volWindow, 
 							this.maMeanReturns_previous_tick.get(secId_1)));
 					
 					for (String secId_2 : secIds) {
 						this.maCovarianceReturns_current_tick.get(secId_1).put(secId_2, StatsTimeSeries.incrementalCovariance(market.getLogReturns(secId_1), 
-								market.getLogReturns(secId_2), this.volWindowVar, this.maCovarianceReturns_previous_tick.get(secId_1).get(secId_2), 
+								market.getLogReturns(secId_2), this.volWindow, this.maCovarianceReturns_previous_tick.get(secId_1).get(secId_2), 
 								this.maMeanReturns_previous_tick.get(secId_1), this.maMeanReturns_previous_tick.get(secId_2)));
 					}
 				}
@@ -514,17 +674,54 @@ public class Trader extends Agent {
 		return orders;
 	}
 	
-	
+
+	/*
+	 * Returns the orders to be added to the portfolio to adjust the positions so
+	 * that the ES of the portfolio is equal to the limit. 
+	 */
+	public ArrayList<Order> esRebalance(double currentEs, double esLimit) {
+		
+		double reductionRatio = esLimit / currentEs;
+		int currentTick = (int) market.currentTick();
+		Set<String> secIds = market.getTradedShares().keySet();
+		ArrayList<Order> orders = new ArrayList<Order>();
+		
+		for (String secId : secIds) {
+			double pos_t = portfolio.getTsPosition(secId).get(currentTick);
+			double pos_t_adjusted = reductionRatio * pos_t;
+			
+			Order order = new Order();
+			order.setOrder(pos_t_adjusted - pos_t);
+			order.setSecId(secId);
+						
+	        orders.add(order);	        
+		}
+		
+		return orders;
+	}
+
 	public String getLabel() {
 	    return label;
+	}
+	
+	public UseVar getUseVar() {
+	    return useVar;
+	}
+	
+	public UseEs getUseEs() {
+	    return useEs;
 	}
 	
 	public TradingPortfolio getPortfolio() {
 	    return portfolio;
 	}
 		
-	public TradingPortfolio getPortfolioReductions() {
-	    return portfolioReductions;
+	public TradingPortfolio getPortfolioVarReductions() {
+	    return portfolioVarReductions;
+	}
+	
+	public TradingPortfolio getPortfolioEsReductions() {
+	    return portfolioEsReductions;
 	}
 	
 	public void setInitCovariances(double initValue) {

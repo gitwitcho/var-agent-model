@@ -69,6 +69,9 @@ public class ShareMarket {
     private HashMap<String, DoubleTimeSeries> spreads;    // spreads between Asset_1 and the rest of assets traded in the market
     private HashMap<String, DataGenerator> fundValueGen;       // data generators for the generic fundamental value process for the different assets
     
+    private double confLevelVar;   // confidence level of the VaR model, as set by regulators
+    private double confLevelEs;    // confidence level of the ES model, as set by regulators
+    
     
     /**
      * @param id an identifier for this market
@@ -85,6 +88,9 @@ public class ShareMarket {
         fundValueGen = new HashMap<String, DataGenerator>();
         
         setAllInitValues(0);
+        
+        confLevelVar = 0;
+        confLevelEs = 0;
         
         logger.trace("CREATED: " + this.toString());
     }
@@ -192,6 +198,38 @@ public class ShareMarket {
         marketId = id;
     }
     
+    /**
+     * @return the confidence level of the VaR model
+     */
+    public double getConfLevelVar() {
+        
+        return confLevelVar;
+    }
+    
+    /**
+     * @param confLevelVar the confidence level for VaR model
+     */
+    public void setConfLevelVar(double confLevel) {
+        
+        confLevelVar = confLevel;
+    }
+
+    /**
+     * @return the confidence level of the ES model
+     */
+    public double getConfLevelEs() {
+        
+        return confLevelEs;
+    }
+    
+    /**
+     * @param confLevelVar the confidence level for ES model
+     */
+    public void setConfLevelEs(double confLevel) {
+        
+        confLevelEs = confLevel;
+    }
+
     
     /**
      * Set the same fund value at time t = 0 for all shares. This method is

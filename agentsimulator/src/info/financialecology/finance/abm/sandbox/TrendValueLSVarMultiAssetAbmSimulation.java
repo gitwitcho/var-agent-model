@@ -694,7 +694,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        for (int tr = 0; tr < numTrends/10; tr++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int trendID = tr;
 		        	DoubleTimeSeries positions_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioVarReductions().getTsPosition("IBM");
 		        	
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();
 		        	orders_IBM.add(0, simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -702,7 +702,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        		orders_IBM.add(i,  simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-		        	DoubleTimeSeries selloffOrders_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+		        	DoubleTimeSeries selloffOrders_IBM = simulator.getTrendFollowers().get("Trend_" + trendID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 		        		                
 	        		atcPosTrend_IBM.populateSeries(e, run, "IBM", "pos_T_" + tr, positions_IBM);
 					atcPosReducedTrend_IBM.populateSeries(e, run, "IBM", "pos_Red_T_" + tr, positionsReduced_IBM);
@@ -714,7 +714,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        for (int val = 0; val < numFunds/10; val++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int valueID = val;
 		        	DoubleTimeSeries positions_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioVarReductions().getTsPosition("IBM");
 		        	
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();
 		        	orders_IBM.add(0, simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -722,7 +722,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        		orders_IBM.add(i,  simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-		        	DoubleTimeSeries selloffOrders_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+		        	DoubleTimeSeries selloffOrders_IBM = simulator.getValueInvestors().get("Value_" + valueID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 
 	        		atcPosFund_IBM.populateSeries(e, run, "IBM", "pos_F_" + val, positions_IBM);
 	        		atcPosReducedFund_IBM.populateSeries(e, run, "IBM", "pos_Red_F_" + val, positionsReduced_IBM);
@@ -734,7 +734,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        for (int ls = 0; ls < numLS/10; ls++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 		        	int lsID = ls;
 		        	DoubleTimeSeries positions_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM");
-		        	DoubleTimeSeries positionsReduced_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioReductions().getTsPosition("IBM");
+		        	DoubleTimeSeries positionsReduced_IBM = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioVarReductions().getTsPosition("IBM");
 
 		        	DoubleTimeSeries orders_IBM = new DoubleTimeSeries();		        	
 		        	orders_IBM.add(0, simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(0));  // Order at t=0
@@ -742,7 +742,7 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 		        		orders_IBM.add(i,  simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(i) - simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("IBM").get(i-1));
 		        	}
 		        	
-		        	DoubleTimeSeries selloffOrders_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsSelloff().get("IBM");   // Sell-off orders due to VaR
+		        	DoubleTimeSeries selloffOrders_IBM = simulator.getLSInvestors().get("LS_" + lsID).getTsVarSelloff().get("IBM");   // Sell-off orders due to VaR
 
 	        		atcPosLS_IBM.populateSeries(e, run, "IBM", "pos_LS_" + ls, positions_IBM);
 	        		atcPosReducedLS_IBM.populateSeries(e, run, "IBM", "pos_Red_LS_" + ls, positionsReduced_IBM);
@@ -789,8 +789,8 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 //		        for (int tr = 0; tr < numTrends/10; tr++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 //		        	int trendID = tr;
 //		        	DoubleTimeSeries positions_GOOG = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolio().getTsPosition("GOOG");
-//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioReductions().getTsPosition("GOOG");
-//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getTrendFollowers().get("Trend_" + trendID).getTsSelloff().get("GOOG");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getTrendFollowers().get("Trend_" + trendID).getPortfolioVarReductions().getTsPosition("GOOG");
+//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getTrendFollowers().get("Trend_" + trendID).getTsVarSelloff().get("GOOG");   // Sell-off orders due to VaR
 //		        	
 //	        		atcPosTrend_GOOG.populateSeries(e, run, "GOOG", "pos_T_" + tr, positions_GOOG);
 //					atcPosReducedTrend_GOOG.populateSeries(e, run, "GOOG", "pos_Red_T_" + tr, positionsReduced_GOOG);
@@ -801,8 +801,8 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 //		        for (int val = 0; val < numFunds/10; val++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 //		        	int valueID = val;
 //		        	DoubleTimeSeries positions_GOOG = simulator.getValueInvestors().get("Value_" + valueID).getPortfolio().getTsPosition("GOOG");
-//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioReductions().getTsPosition("GOOG");
-//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getValueInvestors().get("Value_" + valueID).getTsSelloff().get("GOOG");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getValueInvestors().get("Value_" + valueID).getPortfolioVarReductions().getTsPosition("GOOG");
+//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getValueInvestors().get("Value_" + valueID).getTsVarSelloff().get("GOOG");   // Sell-off orders due to VaR
 //
 //	        		atcPosFund_GOOG.populateSeries(e, run, "GOOG", "pos_F_" + val, positions_GOOG);
 //					atcPosReducedFund_GOOG.populateSeries(e, run, "GOOG", "pos_Red_F_" + val, positionsReduced_GOOG);
@@ -813,8 +813,8 @@ public class TrendValueLSVarMultiAssetAbmSimulation {
 //		        for (int ls = 0; ls < numLS/10; ls++) {  // 10 Nov 2014 - Plot only a sample of time series to avoid memory problems in graphics
 //		        	int lsID = ls;
 //		        	DoubleTimeSeries positions_GOOG = simulator.getLSInvestors().get("LS_" + lsID).getPortfolio().getTsPosition("GOOG");
-//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioReductions().getTsPosition("GOOG");
-//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getLSInvestors().get("LS_" + lsID).getTsSelloff().get("GOOG");   // Sell-off orders due to VaR
+//		        	DoubleTimeSeries positionsReduced_GOOG = simulator.getLSInvestors().get("LS_" + lsID).getPortfolioVarReductions().getTsPosition("GOOG");
+//		        	DoubleTimeSeries selloffOrders_GOOG = simulator.getLSInvestors().get("LS_" + lsID).getTsVarSelloff().get("GOOG");   // Sell-off orders due to VaR
 //		        	
 //	        		atcPosLS_GOOG.populateSeries(e, run, "GOOG", "pos_LS_" + ls, positions_GOOG);
 //					atcPosReducedLS_GOOG.populateSeries(e, run, "GOOG", "pos_Red_LS_" + ls, positionsReduced_GOOG);

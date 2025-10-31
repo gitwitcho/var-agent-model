@@ -1,0 +1,608 @@
+/*
+ * Copyright (c) 2011-2014 Gilbert Peffer, Barbara Llacay
+ * 
+ * The source code and software releases are available at http://code.google.com/p/systemic-risk/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package info.financialecology.finance.utilities.datagen;
+
+import static org.junit.Assert.*;
+import info.financialecology.finance.utilities.output.CsvResultReader;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import cern.colt.list.DoubleArrayList;
+import cern.colt.list.IntArrayList;
+import cern.jet.random.Normal;
+import cern.jet.random.Uniform;
+import cern.jet.random.engine.RandomSeedTable;
+import cern.jet.stat.Descriptive;
+
+/**
+ * @author Gilbert Peffer
+ *
+ */
+public class RandomGeneratorPoolTest {
+
+    /**
+     * @throws java.lang.Exception
+     */
+    @Before
+    public void setUp() throws Exception {
+    }
+    
+    
+    /**
+     * Given a particular seed, the generator pool should create generators that produce identical
+     * random number sequences.
+     */
+    @Test
+    public void configureGeneratorPool_seed_succeed() {
+        
+        System.out.println();
+        System.out.println("UNIT TEST: configureGeneratorPool_seed_succeed");
+        System.out.println();
+        
+        DoubleArrayList dal_u_1 = new DoubleArrayList();
+        DoubleArrayList dal_u_2 = new DoubleArrayList();
+        DoubleArrayList dal_n_1 = new DoubleArrayList();
+        DoubleArrayList dal_n_2 = new DoubleArrayList();
+
+        double precision = 1E-9;
+        double numData = 1000000;
+        int seed = 1484920214;
+        
+        // -------- Sequence 1 ----------
+
+        RandomGeneratorPool.configureGeneratorPool(seed);
+        
+        Uniform unif_1 = RandomGeneratorPool.createUniformGenerator("Uniform1", -10, 10);
+        Normal norm_1 = RandomGeneratorPool.createNormalGenerator("Normal1", 5, 0.5);
+                
+        for (int i = 0; i < numData; i++) {
+            dal_u_1.add(unif_1.nextDouble());
+            dal_n_1.add(norm_1.nextDouble());
+        }
+
+        // -------- Sequence 2 ----------
+
+        RandomGeneratorPool.configureGeneratorPool(seed);        
+        
+        Uniform unif_2 = RandomGeneratorPool.createUniformGenerator("Uniform2", -10, 10);
+        Normal norm_2 = RandomGeneratorPool.createNormalGenerator("Normal2", 5, 0.5);
+                
+        for (int i = 0; i < numData; i++) {
+            dal_u_2.add(unif_2.nextDouble());
+            dal_n_2.add(norm_2.nextDouble());
+        }
+        
+        for (int i = 0; i < numData; i++) {
+            assertEquals("The values of both uniform distibutions should be the same", dal_u_1.get(i), dal_u_2.get(i), precision);
+            assertEquals("The values of both normal distibutions should be the same", dal_n_1.get(i), dal_n_2.get(i), precision);
+        }
+        
+        System.out.println("Success");
+    }
+
+    
+    /**
+     * Test the distributional characteristics of the uniform distribution: lower bound, upper 
+     * bound, mean, variance.
+     */
+    @Test
+    public void createUniformGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT: createUniformGenerator_succeed");
+        System.out.println();
+        
+        int numData = 10000000;            
+        int seed = 1348037628;
+        
+        RandomGeneratorPool.configureGeneratorPool(seed);
+        
+        int lower = -5000;
+        int upper = 10000;
+        double expectedMean = 0.5 * (upper + lower);
+        double expectedVariance = (upper - lower) * (upper - lower) / 12;
+        
+        Uniform unif = RandomGeneratorPool.createUniformGenerator("uniform", lower, upper);
+        
+        DoubleArrayList dal = new DoubleArrayList();
+        
+        for (int r = 0; r < numData; r++)
+            dal.add(unif.nextDouble());
+        
+        double diffMax = Math.abs(upper - Descriptive.max(dal));
+        double diffMin = Math.abs(lower - Descriptive.min(dal));
+        double diffMean = Math.abs(expectedMean - Descriptive.mean(dal));
+        double diffVar = Math.abs(expectedVariance - Descriptive.variance(numData, Descriptive.sum(dal), 
+                Descriptive.sumOfSquares(dal)));
+        
+        System.out.println("Sample maximum: " + Descriptive.max(dal) + " - Expected: " + upper + 
+                " - Diff: " + diffMax);
+        System.out.println("Sample minimum: " + Descriptive.min(dal) + " - Expected: " + lower + 
+                " - Diff: " + diffMin);
+        System.out.println("Sample mean: " + Descriptive.mean(dal) + " - Expected: " + expectedMean +
+                " - Diff: " + diffMean);
+        System.out.println("Sample variance: " + Descriptive.variance(numData, Descriptive.sum(dal), 
+                Descriptive.sumOfSquares(dal)) + " - Expected: " + expectedVariance +
+                " - Diff: " + diffVar);
+                    
+        assertEquals("The difference between the maximum of the sample and the upper bound of the uniform "
+                + "distribution should be approx. 0.0024621", 0.0024621, diffMax, 0.0000001);
+        assertEquals("The difference between the minimum of the sample and the lower bound of the uniform "
+                + "distribution  should be approx. 0.0002654", 0.0002654, diffMin, 0.0000001);
+        assertEquals("The difference between the mean of the sample and the mean of the uniform distribution "
+                + "should be approx. 0.6520551", 0.6520551, diffMean, 0.0000001);
+        assertEquals("The difference between the variance of the sample and the variance of the uniform "
+                + "distribution should be approx. 120.2097675", 120.2097675, diffVar, 0.0000001);
+
+        System.out.println();
+        System.out.println("Success");
+    }
+
+    
+    /**
+     * Test the distributional and other characteristics of the array of uniform distributions.
+     */
+    @Test
+    public void createUniformMultiGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT & VALIDATION TEST: createUniformMultiGenerator_succeed");
+        System.out.println();
+        
+        int numData = 1000000;            
+        int seedStartIndex = 5;
+        int numStreams = 5;
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);
+        
+        Double [] lower = new Double[numStreams];
+        Double [] upper = new Double[numStreams];
+        Double [] args = new Double[numStreams * 2];
+        Double [] eMean = new Double[numStreams];
+        Double [] eVar = new Double[numStreams];
+        
+        Uniform bounds = RandomGeneratorPool.createUniformGenerator("bounds", -1000, 1000);
+        
+        for (int s = 0; s < numStreams; s++) {
+            
+            lower[s] = bounds.nextDouble();
+            upper[s] = bounds.nextDouble();
+            
+            if (lower[s] > upper[s]) {
+                double tmp = lower[s];
+                lower[s] = upper[s];
+                upper[s] = tmp;
+            }
+            
+            args[2 * s] = lower[s];
+            args[2 * s + 1] = upper[s];
+            
+            eMean[s] = (lower[s] + upper[s]) / 2;
+            eVar[s] = (upper[s] - lower[s]) * (upper[s] - lower[s]) / 12; 
+        }
+            
+        ArrayList<Uniform> uniforms = RandomGeneratorPool.createUniformMultiGenerator("multi_uniform", args);
+        
+        assertEquals("The number of uniform distributions in the arraylist should be the same than numStreams", numStreams, uniforms.size());
+        
+        ArrayList<DoubleArrayList> adal = new ArrayList<DoubleArrayList>();
+        
+        for (int s = 0; s < numStreams; s++) {
+                        
+            DoubleArrayList dal = new DoubleArrayList();
+            
+            for (int r = 0; r < numData; r++)
+                dal.add(uniforms.get(s).nextDouble());
+            
+            adal.add(dal);
+        }
+            
+        for (int s = 0; s < numStreams; s++) {
+            
+            double diffMax = Math.abs(upper[s] - Descriptive.max(adal.get(s)));
+            double diffMin = Math.abs(lower[s] - Descriptive.min(adal.get(s)));
+            double diffMean = Math.abs(eMean[s] - Descriptive.mean(adal.get(s)));
+            double diffVar = Math.abs(eVar[s] - Descriptive.variance(numData, Descriptive.sum(adal.get(s)), 
+                                Descriptive.sumOfSquares(adal.get(s))));
+
+            System.out.println();
+            System.out.println("Stream #" + s);
+            System.out.println("----------");
+            System.out.println("Sample maximum: " + Descriptive.max(adal.get(s)) + " - Expected: " + upper[s] + 
+                                " - Diff: " + diffMax);
+            System.out.println("Sample minimum: " + Descriptive.min(adal.get(s)) + " - Expected: " + lower[s] + 
+                                " - Diff: " + diffMin);
+            System.out.println("Sample mean: " + Descriptive.mean(adal.get(s)) + " - Expected: " + eMean[s] +
+                                " - Diff: " + diffMean);
+            System.out.println("Sample variance: " + Descriptive.variance(numData, Descriptive.sum(adal.get(s)), 
+                                Descriptive.sumOfSquares(adal.get(s))) + " - Expected: " + eVar[s] +
+                                " - Diff: " + diffVar);
+        }
+    }
+    
+    
+    /**
+     * Test whether the multi-dimensional distribution generates the same sequences than a set of single 
+     * distributions, having the same start index into the RandomSeedTable.
+     */
+    @Test
+    public void createUniformMultiGenerator_comparewith_createUniformGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT TEST: createUniformMultiGenerator_comparewith_createUniformGenerator_succeed");
+        System.out.println();
+        
+        int numData = 1000000;            
+        int seedStartIndex = 5;
+        double precision = 0.000001;
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);
+
+        ArrayList<Uniform> uniforms = RandomGeneratorPool.createUniformMultiGenerator("multi_uniform", 
+                new Double [] {-10.0, 2.0, 34.0, 56.0, -6.0, -1.0, 1000.0, 2000.0});  // four uniformly distributed random streams
+        
+        ArrayList<DoubleArrayList> adal = new ArrayList<DoubleArrayList>();
+        
+        for (int s = 0; s < 4; s++) {
+                        
+            DoubleArrayList dal = new DoubleArrayList();
+            
+            for (int r = 0; r < numData; r++)
+                dal.add(uniforms.get(s).nextDouble());
+            
+            adal.add(dal);
+        }
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);     // reset the pool
+                    
+        Uniform uniform = RandomGeneratorPool.createUniformGenerator("u0", -10, 2);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 1 from the multi generator has to be the same than that from the single generator", adal.get(0).get(r), uniform.nextDouble(), precision);
+            
+        uniform = RandomGeneratorPool.createUniformGenerator("u1", 34, 56);
+                
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 2 from the multi generator has to be the same than that from the single generator", adal.get(1).get(r), uniform.nextDouble(), precision);
+            
+        uniform = RandomGeneratorPool.createUniformGenerator("u2", -6, -1);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 3 from the multi generator has to be the same than that from the single generator", adal.get(2).get(r), uniform.nextDouble(), precision);
+        
+        uniform = RandomGeneratorPool.createUniformGenerator("u3", 1000, 2000);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 4 from the multi generator has to be the same than that from the single generator", adal.get(3).get(r), uniform.nextDouble(), precision);
+            
+        System.out.println();
+        System.out.println("Success");
+    }
+    
+    
+    /**
+     * Test the distributional characteristics of the normal distribution: mean and variance.
+     */
+    @Test
+    public void createNormalGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT TEST: createNormalGenerator_succeed");
+        System.out.println();
+        
+        int numData = 10000000;            
+        int seed = 2128347692;
+        
+        RandomGeneratorPool.configureGeneratorPool(seed);
+        
+        double mean = 5;
+        double variance = 1;
+        
+        Normal norm = RandomGeneratorPool.createNormalGenerator("normal", mean, variance);
+        
+        DoubleArrayList dal = new DoubleArrayList();
+        
+        for (int r = 0; r < numData; r++)
+            dal.add(norm.nextDouble());
+        
+        double diffMean = Math.abs(mean - Descriptive.mean(dal));
+        double diffVar = Math.abs(variance - Descriptive.variance(numData, Descriptive.sum(dal), 
+                Descriptive.sumOfSquares(dal)));
+        
+        System.out.println("Sample mean: " + Descriptive.mean(dal) + " - Expected: " + mean +
+                " - Diff: " + diffMean);
+        System.out.println("Sample variance: " + Descriptive.variance(numData, Descriptive.sum(dal), 
+                Descriptive.sumOfSquares(dal)) + " - Expected: " + variance +
+                " - Diff: " + diffVar);
+        
+        assertEquals("The difference between the mean of the sample and the mean of the normal distribution "
+                + "should be approx. 0.0004785", 0.0004785, diffMean, 0.0000001);
+        assertEquals("The difference between the variance of the sample and the variance of the normal "
+                + "distribution should be approx. 0.00147222", 0.00147222, diffVar, 0.00000001);
+
+        System.out.println();
+        System.out.println("Success");
+    }
+
+    
+    /**
+     * Test the distributional and other characteristics of the array of normal distributions.
+     */
+    @Test
+    public void createNormalMultiGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT & VALIDATION TEST: createNormalMultiGenerator_succeed");
+        System.out.println();
+        
+        int numData = 1000000;            
+        int seedStartIndex = 5;
+        int numStreams = 5;
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);
+        
+        Double [] mean = new Double[numStreams];
+        Double [] var = new Double[numStreams];
+        Double [] args = new Double[numStreams * 2];
+        
+        Uniform means = RandomGeneratorPool.createUniformGenerator("means", -1000, 1000);
+        Uniform vars = RandomGeneratorPool.createUniformGenerator("vars", 0.1, 2.0);
+        
+        for (int s = 0; s < numStreams; s++) {
+            
+            mean[s] = means.nextDouble();
+            var[s] = vars.nextDouble();
+            
+            args[2 * s] = mean[s];
+            args[2 * s + 1] = var[s];            
+        }
+            
+        ArrayList<Normal> normals = RandomGeneratorPool.createNormalMultiGenerator("multi_normal", args);
+        
+        assertEquals("The number of normal distributions in the arraylist should be the same than numStreams", numStreams, normals.size());
+        
+        ArrayList<DoubleArrayList> adal = new ArrayList<DoubleArrayList>();
+        
+        for (int s = 0; s < numStreams; s++) {
+                        
+            DoubleArrayList dal = new DoubleArrayList();
+            
+            for (int r = 0; r < numData; r++)
+                dal.add(normals.get(s).nextDouble());
+            
+            adal.add(dal);
+        }
+            
+        for (int s = 0; s < numStreams; s++) {
+            
+            double diffMean = Math.abs(mean[s] - Descriptive.mean(adal.get(s)));
+            double diffVar = Math.abs(var[s] - Descriptive.variance(numData, Descriptive.sum(adal.get(s)), 
+                                Descriptive.sumOfSquares(adal.get(s))));
+
+            System.out.println();
+            System.out.println("Stream #" + s);
+            System.out.println("----------");
+            System.out.println("Sample mean: " + Descriptive.mean(adal.get(s)) + " - Expected: " + mean[s] +
+                                " - Diff: " + diffMean);
+            System.out.println("Sample variance: " + Descriptive.variance(numData, Descriptive.sum(adal.get(s)), 
+                                Descriptive.sumOfSquares(adal.get(s))) + " - Expected: " + var[s] +
+                                " - Diff: " + diffVar);
+        }
+    }
+    
+    
+    /**
+     * Test whether the multi-dimensional distribution generates the same sequences than a set of single 
+     * distributions, having the same start index into the RandomSeedTable.
+     */
+    @Test
+    public void createNormalMultiGenerator_comparewith_createNormalGenerator_succeed() {
+
+        System.out.println();
+        System.out.println("UNIT TEST: createNormalMultiGenerator_comparewith_createNormalGenerator_succeed");
+        System.out.println();
+        
+        int numData = 1000000;            
+        int seedStartIndex = 5;
+        double precision = 0.000001;
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);
+
+        ArrayList<Normal> normals = RandomGeneratorPool.createNormalMultiGenerator("multi_normal", 
+                new Double [] {-10.0, 2.0, 340.0, 0.56, -6.0, 1.0, 1000.0, 0.01});  // four normally distributed random streams
+        
+        ArrayList<DoubleArrayList> adal = new ArrayList<DoubleArrayList>();
+        
+        for (int s = 0; s < 4; s++) {
+                        
+            DoubleArrayList dal = new DoubleArrayList();
+            
+            for (int r = 0; r < numData; r++)
+                dal.add(normals.get(s).nextDouble());
+            
+            adal.add(dal);
+        }
+        
+        RandomGeneratorPool.configureGeneratorPool(seedStartIndex);     // reset the pool
+                    
+        Normal normal = RandomGeneratorPool.createNormalGenerator("n0", -10, 2);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 1 from the multi generator has to be the same than that from the single generator", adal.get(0).get(r), normal.nextDouble(), precision);
+            
+        normal = RandomGeneratorPool.createNormalGenerator("n1", 340, 0.56);
+                
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 2 from the multi generator has to be the same than that from the single generator", adal.get(1).get(r), normal.nextDouble(), precision);
+            
+        normal = RandomGeneratorPool.createNormalGenerator("n2", -6, 1);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 3 from the multi generator has to be the same than that from the single generator", adal.get(2).get(r), normal.nextDouble(), precision);
+        
+        normal = RandomGeneratorPool.createNormalGenerator("n3", 1000, 0.01);
+        
+        for (int r = 0; r < numData; r++)
+            assertEquals("The data stream 4 from the multi generator has to be the same than that from the single generator", adal.get(3).get(r), normal.nextDouble(), precision);
+            
+        System.out.println();
+        System.out.println("Success");
+    }
+    
+    
+    /**
+     * Checks for duplicates among the first 440,320 (no duplicate) and 440,321 (exactly two
+     * duplicates) entries of both columns of the RandomSeedTable of the package cern.jet.random.engine.
+     * <p>
+     * The RandomSeedTable is a table of two columns containing 'good' seeds for the pseudo random 
+     * number generators defined in the same package. The documentation is misleading as to the 
+     * periodicity of the seed numbers. While the rows go from 0 to Integer.MAX_VLUE (= 2^31-1), 
+     * a simple experiment shows that the periodicity is 440,320 (on a Dell Precision M6500 
+     * Mobile Workstation). Meaning that RandomSeedTable[0] = RandomSeedTable[440,320].
+     * <p>
+     * Below is an excerpt from the table. From entries [440320] onwards, the values are repeating.
+     * <pre>  
+     *          [0]  9876,          54321              
+     *          [1]  1299961164,    253987020
+     *          [2]  669708517,     2079157264
+     *          [3]  190904760,     417696270
+     *          [4]  1289741558,    1376336092
+     *          [5]  1803730167,    324952955
+     *          [6]  489854550,     582847132
+     *          [7]  1348037628,    1661577989
+     *          [8]  350557787,     1155446919
+     *          [9]  591502945,     634133404
+     *          [10] 1901084678,    862916278
+     *          [11] ...,           ...
+     *          ...
+     *      [440315] 1484920214,    2128347692
+     *      [440316] 1042774238,    1906693327
+     *      [440317] 1791634174,    471820703
+     *      [440318] 1904235334,    285099302
+     *      [440319] 1189671140,    657063496
+     *      [440320] 9876,          54321       = [0]
+     *      [440321] 1299961164,    253987020   = [1]
+     *      [440322] 669708517,     2079157264  = [2]
+     *      [440323] 190904760,     417696270   = [3]
+     *      [440324] 1289741558,    1376336092  = [4]
+     *      [440325] ...,           ...
+     *          ...
+     *   </pre>
+     */
+    @Test
+    public void seedTableDuplicates_succeed() {
+        
+        System.out.println();
+        System.out.println("UNIT TEST: seedTableDuplicates_succeed");
+        System.out.println();
+
+        int numCols = 2;
+        int numRows = 440320;
+        int size = numRows * numCols;   // the period of the original seed table is 440320
+        int [] seeds = new int[size]; 
+        int count = 0;
+        
+        for (int col = 0; col < numCols; col++) {
+            for (int row = 0; row < numRows; row++) {
+                seeds[row + col * numRows] = RandomSeedTable.getSeedAtRowColumn(row, col);
+//                System.out.println("Seed at (" + row + "," + col + "):" + seeds[row + col * numRows]);
+            }
+        }        
+        
+        Arrays.sort(seeds);
+        
+        for (int row = 0; row < size - 1; row++) {
+            if (seeds[row] == seeds[row + 1]) count++;
+//            System.out.println("Seed at row '" + row + "':" + seeds[row]);
+        }
+
+//        System.out.println("Seed at row '" + (size - 1) + "':" + seeds[size - 1]);
+
+        System.out.println("Duplicate seeds for '" + numRows + "' rows and '" + numCols + "' columns (in the RandomSeedTable): " + count);
+        assertEquals("There should be no duplicate seeds among the first 440,320 entries in both columns of the random seed table", count, 0);
+
+        seeds = new int[size + numCols];  // numCol = space for one additional row above the periodicity  
+        count = 0;
+
+        for (int col = 0; col < numCols; col++) {
+            for (int row = 0; row < numRows + 1; row++) {
+                seeds[row + col * (numRows + 1)] = RandomSeedTable.getSeedAtRowColumn(row, col);
+//                System.out.println("Seed at (" + row + "," + col + "):" + seeds[row + col * (numRows + 1)]);
+            }
+        }
+        
+        Arrays.sort(seeds);
+        
+        for (int row = 0; row < size - 1 + numCols; row++) {
+            if (seeds[row] == seeds[row + 1]) count++;
+//            System.out.println("Seed at row '" + row + "':" + seeds[row]);
+        }
+        
+//        System.out.println("Seed at row '" + (size - 1 + numCols) + "':" + seeds[size - 1 + numCols]);
+        
+        System.out.println("Duplicate seeds for '" + (numRows + 1) + "' rows and '" + numCols + "' columns (in the RandomSeedTable): " + count);
+        assertEquals("There should be exactly two duplicate seeds among the first 440,321 entries in both columns of the random seed table", count, 2);
+        
+        System.out.println("Success");
+    }
+    
+
+    /**
+     * Checks whether the 440,321 seeds in the first column of the RandomSeedTable of package
+     * cern.jet.random.engine are identical to those of the table stored in a CSV file on 6 May 2014. 
+     */
+    @Test
+    public void randomSeedTableCompareWithCSVFile_succeed() {
+                
+        System.out.println();
+        System.out.println("UNIT TEST: randomSeedTableCompareWithCSVFile_succeed");
+        System.out.println();
+
+        String fileName = "resources/test/random_generator_pool_test/random_seed_table.csv";
+        
+//        CsvResultWriter w = new CsvResultWriter("resources/test/random_generator_pool_test/random_seed_table_new.csv", ',');
+//        
+//        IntArrayList values = new IntArrayList();
+//        
+//        for (int row = 0; row < 440320; row++)
+//            values.add(RandomSeedTable.getSeedAtRowColumn(row, 0));
+//        
+//        w.write(values);
+//
+        CsvResultReader reader = new CsvResultReader(fileName, ','); 
+        
+        ArrayList<IntArrayList> seeds = reader.readIntMatrix2D(false, false);
+        
+        assertNotNull("The seed table cannot be null", seeds);
+        assertEquals("The seed table has to have 1 column", seeds.size(), 1);
+        assertEquals("The seed table has to have 440,320 rows", 440,320, seeds.get(0).size());
+        
+        Boolean identical = true;
+        
+        for (int row = 0; row < seeds.get(0).size(); row++) {
+            if (RandomSeedTable.getSeedAtRowColumn(row, 0) != seeds.get(0).get(row)) identical = false;
+            
+        assertTrue("The values of RandomSeedTable should be the same than the ones stored in the CSV file", 
+                identical);
+        }
+        
+        System.out.println("Success");
+    }
+}

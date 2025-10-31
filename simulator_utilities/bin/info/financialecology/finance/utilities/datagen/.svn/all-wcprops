@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/!svn/ver/492/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen
+END
+RandomDistDataGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svn/!svn/ver/433/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/RandomDistDataGenerator.java
+END
+BrownianProcess.java
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svn/!svn/ver/486/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/BrownianProcess.java
+END
+AR1Process.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/!svn/ver/464/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/AR1Process.java
+END
+RandomGeneratorPool.java
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/svn/!svn/ver/483/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/RandomGeneratorPool.java
+END
+DataGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/433/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/DataGenerator.java
+END
+OverlayDataGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/svn/!svn/ver/492/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/OverlayDataGenerator.java
+END
+SteppedDataGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/svn/!svn/ver/433/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/SteppedDataGenerator.java
+END
+SinusDataGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 119
+/svn/!svn/ver/485/trunk/simulator_utilities/src/info/financialecology/finance/utilities/datagen/SinusDataGenerator.java
+END

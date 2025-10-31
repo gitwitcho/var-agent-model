@@ -1,0 +1,358 @@
+/**
+ * Simple financial systemic risk simulator for Java
+ * http://code.google.com/p/systemic-risk/
+ * 
+ * Copyright (c) 2011, 2012
+ * Gilbert Peffer, CIMNE
+ * gilbert.peffer@gmail.com
+ * All rights reserved
+ *
+ * This software is open-source under the BSD license; see 
+ * http://code.google.com/p/systemic-risk/wiki/SoftwareLicense
+ */
+package info.financialecology.finance.utilities.sandbox;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import info.financialecology.finance.utilities.sandbox.FileReaderFSM.StopEvent;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+
+import com.continuent.tungsten.fsm.core.Action;
+import com.continuent.tungsten.fsm.core.Event;
+import com.continuent.tungsten.fsm.core.Entity;
+import com.continuent.tungsten.fsm.core.Guard;
+import com.continuent.tungsten.fsm.core.State;
+import com.continuent.tungsten.fsm.core.StateMachine;
+import com.continuent.tungsten.fsm.core.StateTransitionMap;
+import com.continuent.tungsten.fsm.core.StateType;
+import com.continuent.tungsten.fsm.core.Transition;
+
+import com.continuent.tungsten.fsm.core.EntityAdapter;
+import com.continuent.tungsten.fsm.core.EventTypeGuard;
+import com.continuent.tungsten.fsm.core.StateChangeListener;
+import com.continuent.tungsten.fsm.core.StringEvent;
+
+import com.continuent.tungsten.fsm.core.FiniteStateException;
+import com.continuent.tungsten.fsm.core.TransitionRollbackException;
+
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
+/**
+ * This file implements a simple strategy that uses the FSM.
+ * The entry and exit criteria are inspired by the LS strategy, but the positions are 
+ * simplified and only can take three values: 1, 0 -1.
+ * The strategy works as follows:
+ * - If the price goes above the 95 percentile, then position = 1
+ * - If the price goes below the 5 percentile, then position = -1 
+ * - If there is a long position and the price goes below the 50 percentile, then position = 0
+ * - If there is a short position and the price goes above the 50 percentile, then position = 0
+ * 
+ * @author Gilbert Peffer
+ *
+ */
+
+public class SimpleStrategyFSM implements StateChangeListener {  
+	// State machine
+    private StateTransitionMap stmap = null;
+    private StateMachine sm = null;
+
+    // Monitoring and management
+    private static Logger logger = LoggerFactory.getLogger(SimpleStrategyFSM.class);
+    
+    // Array of positions
+    static ArrayList<Integer> positions = null;
+
+    // Ctor
+    public SimpleStrategyFSM() throws Exception {
+    	
+    	// Define actions
+    	
+    	/* Old text
+    	Action logAction = new LogAction();
+    	Action nullAction = new NullAction();
+    	*/
+    	Action startTrading = new startTrading();
+    	Action stopTrading = new stopTrading();    	
+    	Action openLongPosition = new openLongPosition();
+    	Action openShortPosition = new openShortPosition();
+    	Action liquidatePosition = new liquidatePosition();
+    	
+
+    	// Define states
+    	stmap = new StateTransitionMap();
+    	
+    	State start = new State("START", StateType.START);
+    	State end = new State("END", StateType.END);
+    	State positivePosition = new State("POSITIVE_POSITION", StateType.ACTIVE);  // Sub-states of 'trading'
+    	State negativePosition = new State("NEGATIVE_POSITION", StateType.ACTIVE);
+    	State zeroPosition = new State("ZERO_POSITION", StateType.ACTIVE);
+
+    	stmap.addState(start);
+    	stmap.addState(end);
+    	stmap.addState(positivePosition);
+    	stmap.addState(negativePosition);
+    	stmap.addState(zeroPosition);
+
+    	// Define guards
+    	
+        Guard startGuard = new EventTypeGuard(StartEvent.class);
+        Guard stopGuard = new EventTypeGuard(StopEvent.class);
+        Guard crossing5Guard = new EventTypeGuard(Crossing5Event.class);    // crossing the 5% price level from above
+        Guard crossing50Guard = new EventTypeGuard(Crossing50Event.class);  // crossing the 50% price level from either above or below
+        Guard crossing95Guard = new EventTypeGuard(Crossing95Event.class);  // crossing the 95% price level from below
+    	
+
+    	// Define transitions
+    	
+        // Start trading with a positive position
+    	stmap.addTransition(new Transition("START-TO-POSITIVE", startGuard, start, startTrading, positivePosition));
+    	
+    	// Stop trading
+        stmap.addTransition(new Transition("NEGATIVE-TO-END", stopGuard, negativePosition, stopTrading, end));
+        stmap.addTransition(new Transition("ZERO-TO-END", stopGuard, zeroPosition, stopTrading, end));
+        stmap.addTransition(new Transition("POSITIVE-TO-END", stopGuard, positivePosition, stopTrading, end));
+        
+        // Crossing the 5% price level from above
+        stmap.addTransition(new Transition("ZERO-TO-POSITIVE", crossing5Guard, zeroPosition, openLongPosition, positivePosition));
+        stmap.addTransition(new Transition("NEGATIVE-TO-POSITIVE", crossing5Guard, negativePosition, openLongPosition, positivePosition));
+        
+        // Crossing the 50% price level from above or below
+        stmap.addTransition(new Transition("POSITIVE-TO-ZERO", crossing50Guard, positivePosition, liquidatePosition, zeroPosition));
+        stmap.addTransition(new Transition("NEGATIVE-TO-ZERO", crossing50Guard, negativePosition, liquidatePosition, zeroPosition));
+        
+        // Crossing the 95% price level from below
+        stmap.addTransition(new Transition("ZERO-TO-NEGATIVE", crossing95Guard, zeroPosition, openShortPosition, negativePosition));
+        stmap.addTransition(new Transition("POSITIVE-TO-NEGATIVE", crossing95Guard, positivePosition, openShortPosition, negativePosition));
+        
+        
+    	// Create the state machine
+    	stmap.build();
+    	sm = new StateMachine(stmap, new EntityAdapter(this));
+    	sm.addListener(this);
+    }
+    
+       
+    public void start() throws Exception {
+        try {
+            sm.applyEvent(new StartEvent());
+        } catch (Exception e) {
+            logger.error("Start operation failed", e);
+            throw new Exception(e.toString());
+        }
+    }
+    
+    public void stop() throws Exception {
+        try {
+            sm.applyEvent(new StopEvent());
+        } catch (Exception e) {
+            logger.error("Stop operation failed", e);
+            throw new Exception(e.toString());
+        }
+    }
+    
+    public void crossing5() throws Exception {
+        try {
+            sm.applyEvent(new Crossing5Event());
+        } catch (Exception e) {
+            logger.error("Crossing5 operation failed", e);
+            throw new Exception(e.toString());
+        }
+    }
+    
+    public void crossing50() throws Exception {
+        try {
+            sm.applyEvent(new Crossing50Event());
+        } catch (Exception e) {
+            logger.error("Crossing50 operation failed", e);
+            throw new Exception(e.toString());
+        }
+    }
+    
+    public void crossing95() throws Exception {
+        try {
+            sm.applyEvent(new Crossing95Event());
+        } catch (Exception e) {
+            logger.error("Crossing95 operation failed", e);
+            throw new Exception(e.toString());
+        }
+    }
+    
+    public StateMachine getStateMachine() {
+        return sm;
+      }
+
+    
+    // Log state changes
+    public void stateChanged(Entity entity, State oldState, State newState) {
+    	logger.info("State changed: " + oldState.getName() + " -> " + newState.getName());
+    }
+
+    class StartEvent extends Event
+    { public StartEvent() { super(null); } }
+    
+    class StopEvent extends Event
+    { public StopEvent() { super(null); } }
+    
+    class Crossing5Event extends Event
+    { public Crossing5Event() { super(null); } }
+    
+    class Crossing50Event extends Event
+    { public Crossing50Event() { super(null); } }
+    
+    class Crossing95Event extends Event
+    { public Crossing95Event() { super(null); } }
+    
+    
+    // Do nothing
+    class NullAction implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    	}
+    }
+
+    // Create array to allocate positions
+    class startTrading implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    		positions = new ArrayList<Integer>();
+    		logger.info("Started trading: " + event.getData());
+    	}
+    }
+    
+    // ??
+    class stopTrading implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    		logger.info("Stopped trading: " + event.getData());
+    	}
+    }
+    
+    // Enter long position
+    class openLongPosition implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    		positions.add(1);
+    		logger.info("Open long position: " + event.getData());
+    	}
+    }
+
+    // Enter short position
+    class openShortPosition implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    		positions.add(-1);
+    		logger.info("Open short position: " + event.getData());
+    	}
+    }
+    
+    // Liquidate position
+    class liquidatePosition implements Action {
+    	public void doAction(Event event, Entity entity, Transition transition,
+                         int actionType) throws TransitionRollbackException {
+    		positions.add(0);
+    		logger.info("Liquidate: " + event.getData());
+    	}
+    }
+
+    
+    public static void main(String[] args) {
+    	try {
+    		// Build FSM
+    		SimpleStrategyFSM strategyFSM = new SimpleStrategyFSM();
+    		StateMachine sm = strategyFSM.getStateMachine();
+    		   		
+            int nTicks = 200;  // Number of ticks
+            double sinus_shift = 10.0;
+            double sinus_amplitude = 10.0;
+            double sinus_lambda = 50.0;
+            
+            double threshold5 = 0.05 * 2 * sinus_amplitude;
+            double threshold50 = 0.5 * 2 * sinus_amplitude;
+            double threshold95 = 0.95 * 2 * sinus_amplitude;
+            
+            logger.info("Thresholds: [5%, " + threshold5 + "], [50%, " + threshold50 + "], [95%, " + threshold95 + "]");
+
+            //double sinus_t_prev = sinus_amplitude + sinus_shift + sinus_amplitude * Math.sin(2 * 0 * Math.PI / sinus_lambda);
+            double sinus_t_prev = sinus_shift + sinus_amplitude * Math.sin(2 * 0 * Math.PI / sinus_lambda);
+            
+            strategyFSM.start();            
+            
+            for (int i = 1; i < nTicks; i++) {
+                double sinus_t = sinus_amplitude + sinus_shift + sinus_amplitude * Math.sin(2 * i * Math.PI / sinus_lambda);
+            	//double sinus_t = sinus_shift + sinus_amplitude * Math.sin(2 * i * Math.PI / sinus_lambda);
+                
+                logger.info("Tick: " + i + ", value: " + sinus_t);
+                
+                if ((sinus_t >= threshold95) && (sinus_t_prev < threshold95))
+                    strategyFSM.crossing95();
+                
+                if ((sinus_t >= threshold50) && (sinus_t_prev < threshold50) ||
+                        (sinus_t <= threshold50) && (sinus_t_prev > threshold50))
+                    strategyFSM.crossing50();
+                
+                if ((sinus_t <= threshold5) && (sinus_t_prev > threshold5))
+                    strategyFSM.crossing5();
+                
+                sinus_t_prev = sinus_t;
+            }            
+            
+    		/*
+    		
+    		int window = 10;   // Window for the calculation of percentiles
+    		int nTicks = 200;  // Number of ticks
+    		
+    		double[] sinus = new double[nTicks];    // Price series (= sinus process)    		
+    		double sinus_shift = 100.0;   // Parameters of the sinus process
+    		double sinus_amplitude = 20.0;
+    		double sinus_lambda = 50.0;   		
+    		
+    		
+    		// Create a sinus price process to test the strategy
+    		for (int i = 0; i < nTicks; i++) {
+    			sinus[i] = sinus_shift + sinus_amplitude * Math.sin(2*i*Math.PI / sinus_lambda);
+    		}
+    		
+    		for (int i = 0; i < nTicks; i++) {
+    			if (i < window)
+    				positions.add(0);
+    			else {
+    				DescriptiveStatistics   stats = new DescriptiveStatistics();
+    				for (int j = i-window+1; j <= i; j++) {
+        	            stats.addValue(sinus[j]);
+    				}
+    				double perc_95 = stats.getPercentile(95);
+    				double perc_5 = stats.getPercentile(5);
+    				double perc_50 = stats.getPercentile(50);
+    				
+    				if (sinus[i-1]<perc_95 && sinus[i]>=perc_95) sm.applyEvent(new Event("Buy"));
+    				if (sinus[i-1]>perc_5 && sinus[i]<=perc_5) sm.applyEvent(new Event("Sell"));
+
+
+    				// TODO: Add liquidation events				
+    				    				
+    			}
+    			
+    		}
+    		*/
+    		
+    		
+
+    		// Terminate FSM
+    		strategyFSM.stop();
+    	} catch (FiniteStateException e) {
+    		logger.error("Unexpected state transition processing error", e);
+    	} catch (Exception e) {
+    		System.err.println(e.getMessage());
+    		e.printStackTrace();
+    	}
+    }
+}
