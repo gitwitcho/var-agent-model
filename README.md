@@ -1,12 +1,12 @@
 # var-agent-model
-An agent-based simulation to calculate market instability induced by value-at-risk models
+An agent-based simulation to calculate market instability induced by value-at-risk and expected shortfall models
 
 Copyright (c) 2011-2015 Gilbert Peffer, Bàrbara Llacay
 
 See LICENSE for redistribution information.
 
 ## Rationale of var-agent-model
-<tt>Var-agent-model</tt> is a Java agent-based framework created to analyse the effect of most common trading strategies and value-at-risk (VaR) risk-management models in market dynamics. 
+<tt>Var-agent-model</tt> is a Java agent-based framework created to analyse the effect of most common trading strategies and value-at-risk (VaR) / expected shortfall (ES) risk-management models in market dynamics. 
 
 VaR models, which measure the maximum loss that an asset portfolio may suffer over a specific horizon and with a given level of confidence, are used by financial institutions around the world to manage their market risk. VaR models, as any other risk management system, are meant to keep financial institutions out of trouble, but some researchers have warned that the widespread use of VaR models creates negative externalities in financial markets, as it can feed market instability. Financial institutions usually set VaR limits to their traders or units, which are forced to reduce their positions when the risk exceeds these limits; when volatility increases, the VaR of trading portfolios also goes up and so traders can be forced to reduce their positions, but their sales can cause a price drop and so a new volatility upsurge, triggering further portfolio reductions. When many investors hold similar positions and also use the same type of risk management models, they may be forced to simultaneously sell the same assets, leading to an instabilising spiral.
 
